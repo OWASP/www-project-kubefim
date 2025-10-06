@@ -1,0 +1,24 @@
+audience:
+  - defender
+leaders:
+  - name: Abhijit Chatterjee
+    email: abhijit.chatterjee@owasp.org
+    github: abhijitio
+level: 2
+license:
+  - Apache-2.0
+name: OWASP KubeFIM
+pitch: OWASP KubeFIM is an eBPF based Kubernetes File Integrity Monitoring solution.
+repositories:
+  - name: www-project-kubefim
+    url: https://github.com/OWASP/www-project-kubefim
+    description: OWASP Foundation Web Repository
+  - name: OWASP-KubeFIM
+    url: https://github.com/abhijitio/OWASP-KubeFIM
+    description: File Integrity Monitoring for Kubernetes
+tags:
+  - kubefim
+  - kubernetes
+  - FIM
+type: documentation
+website: https://owasp.org/www-project-kubefim
