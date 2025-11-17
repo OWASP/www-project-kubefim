@@ -1,0 +1,15 @@
+# Start from the official Go 1.22 image, which is based on Linux
+FROM golang:1.24
+
+# Install clang, llvm, libbpf, git, and other C build tools
+RUN apt-get update && apt-get install -y \
+    clang \
+    llvm \
+    libbpf-dev \
+    build-essential \
+    linux-headers-generic \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory inside the container
+WORKDIR /app
