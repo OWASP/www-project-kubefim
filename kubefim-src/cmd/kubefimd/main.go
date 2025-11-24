@@ -17,14 +17,30 @@ import (
 	"kubefim/bpf"
 )
 
-// The Go struct must exactly match the C struct
 type Event struct {
-	PID  uint32
-	UID  uint32
-	Comm [16]byte
-	Path [256]byte
+    PID       uint32
+    UID       uint32
+    Comm      [16]byte
+    Path      [256]byte
+    EventType uint32
 }
 
+func (e *Event) EventName() string {
+	switch e.EventType {
+	case 1:
+		return "OPEN"
+	case 2:
+		return "CREATE"
+	case 3:
+		return "DELETE"
+	case 4:
+		return "RENAME"
+	case 5:
+		return "CHMOD"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -44,14 +60,31 @@ func main() {
 	}
 	defer rd.Close()
 
-	// Attach the tracepoint
-	tp, err := link.Tracepoint("syscalls", "sys_enter_openat", objs.TracepointOpenat, nil)
-	if err != nil {
-		log.Fatalf("attaching tracepoint: %s", err)
-	}
-	defer tp.Close()
+	links := []link.Link{}
 
-	log.Println("Waiting for events (minimal baseline mode)...")
+	attach := func(tp link.Link, err error) {
+		if err != nil {
+			log.Fatalf("Attach error: %v", err)
+		}
+		links = append(links, tp)
+	}
+
+	log.Println("Attaching BPF tracepoints...")
+
+	attach(link.Tracepoint("syscalls", "sys_enter_openat", objs.TpOpenat, nil))
+	attach(link.Tracepoint("syscalls", "sys_enter_unlinkat", objs.TpUnlink, nil))
+	attach(link.Tracepoint("syscalls", "sys_enter_renameat2", objs.TpRename, nil))
+	attach(link.Tracepoint("syscalls", "sys_enter_fchmod", objs.TpChmodFchmod, nil))
+    attach(link.Tracepoint("syscalls", "sys_enter_fchmodat", objs.TpChmodFchmodat, nil))
+    attach(link.Tracepoint("syscalls", "sys_enter_fchmodat2", objs.TpChmodFchmodat2, nil))
+
+	defer func() {
+		for _, l := range links {
+			l.Close()
+		}
+	}()
+
+	log.Println("Listening for events...")
 
 	// Handle shutdown
 	sigs := make(chan os.Signal, 1)
@@ -90,6 +123,6 @@ func main() {
 		// Print the raw, unfiltered event data
 		comm := strings.Trim(string(event.Comm[:]), "\x00")
 		path := strings.Trim(string(event.Path[:]), "\x00")
-		fmt.Printf("PID: %-7d UID: %-5d Comm: %-15s Path: %s\n", event.PID, event.UID, comm, path)
+		fmt.Printf("[%s] PID=%d UID=%d COMM=%s PATH=%s\n", event.EventName(), event.PID, event.UID, comm, path,)
 	}
 }
