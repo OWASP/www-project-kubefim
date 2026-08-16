@@ -1,0 +1,26 @@
+docker build -t ebpf-dev-env -f Dockerfile.dev .
+
+sudo docker run -it --rm \
+  --name my-ebpf-dev \
+  --privileged \
+  -v "$(pwd)":/app \
+  -v /sys/kernel/debug:/sys/kernel/debug \
+  -v /sys/fs/bpf:/sys/fs/bpf \
+  ebpf-dev-env \
+  bash
+
+
+go mod edit -module=kubefim
+
+export GOPROXY=direct
+
+go mod tidy
+
+rm -f bpf/bpf_*
+
+go generate ./bpf
+
+go build -o kubefim ./cmd/kubefimd
+
+./kubefim
+
