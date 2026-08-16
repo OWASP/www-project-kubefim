@@ -11,6 +11,7 @@ import (
 
 	"kubefim/internal/collector"
 	"kubefim/internal/event"
+	"kubefim/internal/policy"
 )
 
 type fakeCollector struct {
@@ -56,7 +57,7 @@ func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 		got = value
 		cancel()
 		return nil
-	}), log.New(&logs, "", 0))
+	}), policy.Default(), log.New(&logs, "", 0))
 
 	if err := application.Run(ctx); err != nil {
 		t.Fatal(err)
@@ -77,7 +78,7 @@ func TestRunReturnsOutputErrorAndClosesCollector(t *testing.T) {
 	source := newFakeCollector(collector.Record{Event: event.Event{Operation: event.OperationOpen}})
 	application := New(source, outputFunc(func(event.Event) error {
 		return wantErr
-	}), log.New(io.Discard, "", 0))
+	}), policy.Default(), log.New(io.Discard, "", 0))
 
 	err := application.Run(ctx)
 	if !errors.Is(err, wantErr) {

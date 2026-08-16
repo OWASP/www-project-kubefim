@@ -3,6 +3,7 @@
 set -euo pipefail
 
 binary="${KUBEFIM_BINARY:-./kubefim}"
+config="${KUBEFIM_CONFIG:-}"
 test_id="kubefim-e2e-$$"
 source_path="/tmp/${test_id}-a"
 destination_path="/tmp/${test_id}-b"
@@ -18,7 +19,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-"${binary}" >"${log_file}" 2>&1 &
+command=("${binary}")
+if [[ -n "${config}" ]]; then
+    command+=(--config "${config}")
+fi
+
+"${command[@]}" >"${log_file}" 2>&1 &
 agent_pid=$!
 sleep 2
 

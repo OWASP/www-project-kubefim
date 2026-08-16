@@ -7,6 +7,7 @@ import (
 
 	"kubefim/internal/collector"
 	"kubefim/internal/output"
+	"kubefim/internal/policy"
 )
 
 // Logger is the logging surface needed by the agent.
@@ -19,11 +20,12 @@ type Logger interface {
 type Agent struct {
 	collector collector.Collector
 	output    output.Output
+	policy    policy.Decider
 	logger    Logger
 }
 
-func New(eventCollector collector.Collector, eventOutput output.Output, logger Logger) *Agent {
-	return &Agent{collector: eventCollector, output: eventOutput, logger: logger}
+func New(eventCollector collector.Collector, eventOutput output.Output, decider policy.Decider, logger Logger) *Agent {
+	return &Agent{collector: eventCollector, output: eventOutput, policy: decider, logger: logger}
 }
 
 // Run processes events until the context is cancelled or an unrecoverable
@@ -56,6 +58,19 @@ func (a *Agent) Run(ctx context.Context) error {
 		if record.LostSamples > 0 {
 			a.logger.Printf("lost %d samples", record.LostSamples)
 			continue
+		}
+
+		decision := a.policy.Decide(record.Event)
+		if len(decision.MatchedRules) > 0 {
+			a.logger.Printf(
+				"policy decision action=%s class=%s protected=%t suppressed=%t rules=%v reason=%q",
+				decision.Action,
+				decision.Class,
+				decision.Protected,
+				decision.Suppressed,
+				decision.MatchedRules,
+				decision.Explanation,
+			)
 		}
 
 		if err := a.output.Write(record.Event); err != nil {
