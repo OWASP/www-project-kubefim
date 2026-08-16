@@ -1,0 +1,13 @@
+# Private Codex working state and learning records
+/plan/
+/docs/memory/
+
+# Local build and test artifacts
+/kubefim
+/coverage.out
+/*.test
+
+# Editor and operating-system files
+.DS_Store
+*.swp
+*.swo
