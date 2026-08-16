@@ -10,7 +10,7 @@ pitch: eBPF-powered file integrity monitoring for Kubernetes workloads and nodes
 ---
 
 <p align="center">
-  <img src="/assets/images/kubefim-logo-v2.png" alt="OWASP KubeFIM logo" width="420">
+  <img src="{{ '/assets/images/kubefim-logo-v2.png' | relative_url }}" alt="OWASP KubeFIM logo" width="420">
 </p>
 
 # File integrity visibility for Kubernetes
