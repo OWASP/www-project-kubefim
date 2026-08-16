@@ -11,15 +11,17 @@
 
 * <i class="fas fa-shield-alt" style="color:#233e81;"></i> Defender
 
-### Downloads or Social Links
+### Project Links
 
-* [Download](https://github.com/abhijitio/OWASP-KubeFIM)
+- [Source code](https://github.com/OWASP/www-project-kubefim)
+- [Issue tracker](https://github.com/OWASP/www-project-kubefim/issues)
+- [Contribution guidelines](CONTRIBUTING)
+- [Security policy](SECURITY)
 
-### Code Repository
+### Project Leadership
 
-* [repo](https://github.com/abhijitio/OWASP-KubeFIM)
+- [Abhijit Chatterjee](mailto:abhijit.chatterjee@owasp.org)
 
 ### Licensing
 
-[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0)
-
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
