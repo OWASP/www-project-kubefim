@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: kubefim
+    patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kubefim
+        namespace: kubefim-system
+      spec:
+        template:
+          spec:
+            initContainers:
+              - name: prepare-node
+                image: kubefim-init:e2e
+            containers:
+              - name: kubefim
+                image: kubefim:e2e

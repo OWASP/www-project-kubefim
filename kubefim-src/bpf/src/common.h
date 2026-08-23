@@ -30,6 +30,7 @@ enum event_type_e {
     EVENT_DELETE = 3,
     EVENT_RENAME = 4,
     EVENT_CHMOD = 5,
+    EVENT_EXEC = 6,
 };
 
 #define O_CREAT 0100

@@ -49,6 +49,32 @@ func TestDecodeRejectsShortPayload(t *testing.T) {
 	}
 }
 
+func TestDecodeExecEvent(t *testing.T) {
+	raw := rawEvent{
+		SchemaVersion: SchemaVersion,
+		EventType:     uint32(OperationExec),
+		ReturnValue:   -13,
+	}
+	copy(raw.Comm[:], "node")
+	copy(raw.Path[:], "/tmp/setup")
+
+	var payload bytes.Buffer
+	if err := binary.Write(&payload, binary.LittleEndian, raw); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Decode(payload.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Operation != OperationExec || got.Comm != "node" || got.Path != "/tmp/setup" {
+		t.Fatalf("unexpected exec event: %+v", got)
+	}
+	if got.ReturnValue != -13 || got.Successful() {
+		t.Fatalf("failed exec result is %+v", got)
+	}
+}
+
 func TestRawEventSizeMatchesKernelContract(t *testing.T) {
 	if got := binary.Size(rawEvent{}); got != RawSize {
 		t.Fatalf("raw event size is %d, want %d", got, RawSize)

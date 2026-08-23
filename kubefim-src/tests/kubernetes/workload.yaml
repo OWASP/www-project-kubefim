@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubefim-test
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubefim-e2e
+  namespace: kubefim-test
+  labels:
+    app.kubernetes.io/name: kubefim-e2e
+spec:
+  restartPolicy: Never
+  containers:
+    - name: workload
+      image: ubuntu:24.04
+      imagePullPolicy: IfNotPresent
+      command: [/bin/bash, -c]
+      args:
+        - |
+          set -eu
+          test_id=kubefim-k8s-e2e
+          touch /tmp/${test_id}-a
+          cat /tmp/${test_id}-a >/dev/null
+          mv /tmp/${test_id}-a /tmp/${test_id}-b
+          chmod 600 /tmp/${test_id}-b
+          cp /bin/true /tmp/${test_id}-exec
+          chmod 700 /tmp/${test_id}-exec
+          /tmp/${test_id}-exec
+          /tmp/${test_id}-missing 2>/dev/null || true
+          rm /tmp/${test_id}-b
+          sleep 300

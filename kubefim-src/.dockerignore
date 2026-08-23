@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+btfhub
+docs/memory
+plan
+notes
+past
+**/__pycache__
+**/*.pyc
+kubefim
+sync.sh
+Dockerfile.dev
+KUBEFIM-Docker
+bpf/src/vmlinux.h

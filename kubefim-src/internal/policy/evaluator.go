@@ -210,6 +210,8 @@ func parseOperation(value string) (event.Operation, error) {
 		return event.OperationRename, nil
 	case "chmod":
 		return event.OperationChmod, nil
+	case "exec":
+		return event.OperationExec, nil
 	default:
 		return 0, fmt.Errorf("unsupported operation %q", value)
 	}

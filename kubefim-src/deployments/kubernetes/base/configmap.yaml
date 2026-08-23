@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubefim-policy
+  namespace: kubefim-system
+  labels:
+    app.kubernetes.io/name: kubefim
+    app.kubernetes.io/part-of: owasp-kubefim
+data:
+  policy.yaml: |
+    apiVersion: policy.kubefim.org/v1alpha1
+    kind: KubeFIMPolicy
+    spec:
+      mode: observe
+      defaults:
+        access: aggregate
+        mutation: audit
+      protectedPaths:
+        - /etc/**
+        - /usr/bin/**
+        - /usr/sbin/**
+      rules:
+        - id: execution-from-temporary-directory
+          match:
+            operations: [exec]
+            pathPrefixes: [/tmp/**, /var/tmp/**, /dev/shm/**]
+            success: true
+          action: alert
+          reason: Executable launched from a commonly writable temporary directory
+          owner: security

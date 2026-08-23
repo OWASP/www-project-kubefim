@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubefim-pod-reader
+  labels:
+    app.kubernetes.io/name: kubefim
+    app.kubernetes.io/part-of: owasp-kubefim
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubefim-pod-reader
+  labels:
+    app.kubernetes.io/name: kubefim
+    app.kubernetes.io/part-of: owasp-kubefim
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubefim-pod-reader
+subjects:
+  - kind: ServiceAccount
+    name: kubefim
+    namespace: kubefim-system

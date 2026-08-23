@@ -12,6 +12,7 @@ func TestOperationString(t *testing.T) {
 		{OperationDelete, "DELETE"},
 		{OperationRename, "RENAME"},
 		{OperationChmod, "CHMOD"},
+		{OperationExec, "EXEC"},
 		{Operation(99), "UNKNOWN(99)"},
 	}
 

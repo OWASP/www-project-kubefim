@@ -86,6 +86,43 @@ spec:
 	}
 }
 
+func TestExecRule(t *testing.T) {
+	evaluator := mustDecode(t, `
+apiVersion: policy.kubefim.org/v1alpha1
+kind: KubeFIMPolicy
+spec:
+  rules:
+    - id: execution-from-temporary-directory
+      match:
+        operations: [exec]
+        pathPrefixes: [/tmp/**]
+        success: true
+      action: alert
+      reason: executable launched from temporary directory
+      owner: security
+`)
+
+	decision := evaluator.Decide(event.Event{
+		Operation: event.OperationExec, Path: "/tmp/kubefim-test", ReturnValue: 0,
+	})
+	if decision.Action != ActionAlert || decision.Suppressed {
+		t.Fatalf("successful execution decision is %+v", decision)
+	}
+	if len(decision.MatchedRules) != 1 || decision.MatchedRules[0] != "execution-from-temporary-directory" {
+		t.Fatalf("matched rules are %v", decision.MatchedRules)
+	}
+	if decision.Explanation != "executable launched from temporary directory" {
+		t.Fatalf("explanation is %q", decision.Explanation)
+	}
+
+	failed := evaluator.Decide(event.Event{
+		Operation: event.OperationExec, Path: "/tmp/kubefim-test", ReturnValue: -13,
+	})
+	if failed.Action != ActionAudit || len(failed.MatchedRules) != 0 {
+		t.Fatalf("failed execution decision is %+v", failed)
+	}
+}
+
 func TestExceptionStopsApplyingAfterExpiry(t *testing.T) {
 	evaluator := mustDecode(t, `
 apiVersion: policy.kubefim.org/v1alpha1

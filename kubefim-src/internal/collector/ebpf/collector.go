@@ -55,18 +55,36 @@ func New(logger Logger) (*Collector, error) {
 	}
 	c.reader = reader
 
-	programs := []struct {
+	execCompletion, execUnavailable, err := c.attach("sched", "sched_process_exec", c.objects.TpSchedProcessExec)
+	if err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	if !execUnavailable {
+		c.links = append(c.links, execCompletion)
+	}
+
+	type tracepointPair struct {
 		entryName    string
 		entryProgram *cebpf.Program
 		exitName     string
 		exitProgram  *cebpf.Program
-	}{
+	}
+	programs := []tracepointPair{
 		{"sys_enter_openat", c.objects.TpEnterOpenat, "sys_exit_openat", c.objects.TpExitOpenat},
 		{"sys_enter_unlinkat", c.objects.TpEnterUnlinkat, "sys_exit_unlinkat", c.objects.TpExitUnlinkat},
 		{"sys_enter_renameat2", c.objects.TpEnterRenameat2, "sys_exit_renameat2", c.objects.TpExitRenameat2},
 		{"sys_enter_chmod", c.objects.TpEnterChmod, "sys_exit_chmod", c.objects.TpExitChmod},
 		{"sys_enter_fchmodat", c.objects.TpEnterFchmodat, "sys_exit_fchmodat", c.objects.TpExitFchmodat},
 		{"sys_enter_fchmodat2", c.objects.TpEnterFchmodat2, "sys_exit_fchmodat2", c.objects.TpExitFchmodat2},
+	}
+	if !execUnavailable {
+		programs = append(programs,
+			tracepointPair{"sys_enter_execve", c.objects.TpEnterExecve, "sys_exit_execve", c.objects.TpExitExecve},
+			tracepointPair{"sys_enter_execveat", c.objects.TpEnterExecveat, "sys_exit_execveat", c.objects.TpExitExecveat},
+		)
+	} else {
+		c.logger.Printf("Tracepoint sched_process_exec is unavailable; skipping process execution collection")
 	}
 
 	for _, program := range programs {
@@ -84,7 +102,7 @@ func New(logger Logger) (*Collector, error) {
 }
 
 func (c *Collector) attachPair(entryName string, entryProgram *cebpf.Program, exitName string, exitProgram *cebpf.Program) error {
-	entry, unavailable, err := c.attach(entryName, entryProgram)
+	entry, unavailable, err := c.attach("syscalls", entryName, entryProgram)
 	if err != nil {
 		return err
 	}
@@ -92,7 +110,7 @@ func (c *Collector) attachPair(entryName string, entryProgram *cebpf.Program, ex
 		return nil
 	}
 
-	exit, unavailable, err := c.attach(exitName, exitProgram)
+	exit, unavailable, err := c.attach("syscalls", exitName, exitProgram)
 	if err != nil {
 		_ = entry.Close()
 		return err
@@ -107,14 +125,14 @@ func (c *Collector) attachPair(entryName string, entryProgram *cebpf.Program, ex
 	return nil
 }
 
-func (c *Collector) attach(name string, program *cebpf.Program) (link.Link, bool, error) {
-	tracepoint, err := link.Tracepoint("syscalls", name, program, nil)
+func (c *Collector) attach(group, name string, program *cebpf.Program) (link.Link, bool, error) {
+	tracepoint, err := link.Tracepoint(group, name, program, nil)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			c.logger.Printf("Tracepoint %s is unavailable on this kernel; skipping", name)
 			return nil, true, nil
 		}
-		return nil, false, fmt.Errorf("attach tracepoint %s: %w", name, err)
+		return nil, false, fmt.Errorf("attach tracepoint %s/%s: %w", group, name, err)
 	}
 	return tracepoint, false, nil
 }

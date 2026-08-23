@@ -15,6 +15,15 @@ spec:
     - /usr/sbin/**
 
   rules:
+    - id: execution-from-temporary-directory
+      match:
+        operations: [exec]
+        pathPrefixes: [/tmp/**, /var/tmp/**, /dev/shm/**]
+        success: true
+      action: alert
+      reason: Executable launched from a commonly writable temporary directory
+      owner: security
+
     - id: failed-sensitive-access
       match:
         operations: [open]

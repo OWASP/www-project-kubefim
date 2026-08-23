@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"kubefim/internal/collector"
+	"kubefim/internal/enrichment"
 	"kubefim/internal/output"
 	"kubefim/internal/policy"
 )
@@ -21,11 +23,16 @@ type Agent struct {
 	collector collector.Collector
 	output    output.Output
 	policy    policy.Decider
+	enricher  enrichment.Enricher
 	logger    Logger
 }
 
-func New(eventCollector collector.Collector, eventOutput output.Output, decider policy.Decider, logger Logger) *Agent {
-	return &Agent{collector: eventCollector, output: eventOutput, policy: decider, logger: logger}
+func New(eventCollector collector.Collector, eventOutput output.Output, decider policy.Decider, logger Logger, enrichers ...enrichment.Enricher) *Agent {
+	var eventEnricher enrichment.Enricher = enrichment.None{}
+	if len(enrichers) > 0 && enrichers[0] != nil {
+		eventEnricher = enrichers[0]
+	}
+	return &Agent{collector: eventCollector, output: eventOutput, policy: decider, enricher: eventEnricher, logger: logger}
 }
 
 // Run processes events until the context is cancelled or an unrecoverable
@@ -59,7 +66,13 @@ func (a *Agent) Run(ctx context.Context) error {
 			a.logger.Printf("lost %d samples", record.LostSamples)
 			continue
 		}
+		// Enrichment and output perform file operations too. Dropping only this
+		// daemon's TGID prevents feedback without trusting a process name.
+		if record.Event.TGID == uint32(os.Getpid()) {
+			continue
+		}
 
+		record.Event = a.enricher.Enrich(ctx, record.Event)
 		decision := a.policy.Decide(record.Event)
 		if len(decision.MatchedRules) > 0 {
 			a.logger.Printf(

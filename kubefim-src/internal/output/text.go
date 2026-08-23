@@ -17,14 +17,23 @@ func NewText(writer io.Writer) *Text {
 }
 
 func (t *Text) Write(event event.Event) error {
+	workload := ""
+	if event.Kubernetes.PodUID != "" {
+		workload = fmt.Sprintf(" K8S=%s/%s CONTAINER=%s", event.Kubernetes.Namespace, event.Kubernetes.PodName, event.Kubernetes.ContainerName)
+	} else if event.Container.Host {
+		workload = " CONTAINER=host"
+	} else if event.Container.ID != "" {
+		workload = fmt.Sprintf(" CONTAINER=%s:%s", event.Container.Runtime, event.Container.ID)
+	}
 	_, err := fmt.Fprintf(
 		t.writer,
-		"[%s] PID=%d UID=%d COMM=%s PATH=%s\n",
+		"[%s] PID=%d UID=%d COMM=%s PATH=%s%s\n",
 		event.Operation,
 		event.PID,
 		event.UID,
 		event.Comm,
 		event.Path,
+		workload,
 	)
 	return err
 }

@@ -5,125 +5,92 @@ title: OWASP KubeFIM
 tags: kubefim kubernetes eBPF FIM runtime-security
 level: 2
 type: Code
-pitch: eBPF-powered file integrity monitoring for Kubernetes workloads and nodes.
+pitch: eBPF file integrity and process monitoring for Kubernetes nodes.
 
 ---
 
 <p align="center">
-  <img src="{{ '/assets/images/kubefim-logo-v2.png' | relative_url }}" alt="OWASP KubeFIM logo" width="420">
+  <img src="/www-project-kubefim/assets/images/kubefim-logo-v2.png" alt="OWASP KubeFIM logo" width="360">
 </p>
 
-# File integrity visibility for Kubernetes
+# File integrity monitoring for Kubernetes
 
-OWASP KubeFIM is an open source, eBPF-powered File Integrity Monitoring project
-for Kubernetes. It observes filesystem activity at the Linux kernel, connects it
-to the process responsible, and is being built to attribute each event to its
-container, pod, namespace, and node.
+OWASP KubeFIM is an open source Linux node agent that uses eBPF to observe file
+activity and process execution. In Kubernetes it connects each event to the
+responsible process, container, Pod, namespace, and node.
 
-[View the source code](https://github.com/OWASP/www-project-kubefim){: .btn .btn-primary }
+[Source code](https://github.com/OWASP/www-project-kubefim/tree/main/kubefim-src){: .btn .btn-primary }
+[Docker image](https://hub.docker.com/r/abhijitowasp/owasp-kubefim){: .btn .btn-outline-primary }
 [Report an issue](https://github.com/OWASP/www-project-kubefim/issues){: .btn .btn-outline-primary }
 
-> **Project status:** KubeFIM is under active development as an OWASP Incubator
-> project. The current Linux agent captures and tests core filesystem syscall
-> events. Kubernetes enrichment, policy controls, metrics, and production
-> packaging are being developed incrementally.
+> **Release status:** `v0.1.0-alpha.1` is intended for evaluation on Linux
+> Kubernetes nodes. KubeFIM requires runtime kernel BTF and currently runs as a
+> privileged DaemonSet.
 
-## Why KubeFIM?
+## What it records
 
-Containers are lightweight and short-lived, but they still share the Linux
-kernel of their Kubernetes node. Security teams need to understand when files are
-created, removed, renamed, or have their permissions changed—and which workload
-and process caused the activity.
+- file create/open, delete, rename, and permission-change syscalls
+- successful and failed `execve` and `execveat` process execution
+- syscall result, PID/TGID/PPID, UID/GID, and process command
+- cgroup, mount namespace, and PID namespace identifiers
+- full container ID and runtime for containerd, CRI-O, and Docker cgroups
+- Kubernetes node, namespace, Pod UID/name, container name, image, and image ID
 
-KubeFIM is designed to provide that visibility from a node-level DaemonSet,
-without modifying application images or injecting an agent into every workload.
+Events are written as JSON Lines for collection by existing log agents. A text
+format remains available for development.
 
-## Current capabilities
-
-| Capability | Status |
-| --- | --- |
-| Observe create and open activity through `openat` | Available |
-| Observe deletion through `unlinkat` | Available |
-| Observe rename activity and both paths through `renameat2` | Available |
-| Observe path-based permission changes | Available |
-| Capture PID, TGID, PPID, UID, GID, and process command | Available |
-| Capture cgroup, mount namespace, and PID namespace identity | Available |
-| Correlate syscall entry and exit, including failures | Available |
-| Automated privileged Linux smoke testing | Available |
-| Container and Kubernetes metadata enrichment | In development |
-| Policy-based filtering and noise reduction | Planned |
-| JSON logs and Prometheus metrics | Planned |
-| Grafana, Elasticsearch, and CloudWatch examples | Planned |
-
-## How it works
-
-1. eBPF programs attach to supported filesystem syscall tracepoints on each Linux
-   node.
-2. Entry and exit events are correlated so KubeFIM can report the attempted
-   operation and its result.
-3. A node-local Go agent reads the kernel event stream and converts it into a
-   stable event model.
-4. Container and Kubernetes metadata will enrich that event from local caches.
-5. Policy rules will retain security-relevant activity and suppress routine
-   noise.
-6. Structured logs and bounded-cardinality metrics will feed existing security
-   and observability platforms.
+## Architecture
 
 ```text
-Linux syscalls
-      ↓
-eBPF entry/exit programs
-      ↓
-KubeFIM node agent
-      ↓
-Container and Kubernetes enrichment
-      ↓
-Policy filtering
-      ↓
-JSON logs · Prometheus metrics · security backends
+syscall tracepoints
+        │
+        ▼
+  eBPF programs ── entry/exit correlation
+        │
+        ▼
+  KubeFIM agent ── cgroup and process identity
+        │
+        ▼
+  Pod list/watch cache ── Kubernetes metadata
+        │
+        ▼
+  policy decision ── JSON Lines to stdout
 ```
 
-## Example event
+One privileged KubeFIM pod runs on each selected Linux node. The agent reads
+`/proc/<pid>/cgroup` through a read-only host mount and maintains a node-filtered
+Pod cache. It does not call the Kubernetes API for every event. Its service
+account has read-only access to get, list, and watch Pods.
 
-The current development-friendly output identifies the operation, process, user,
-and path:
+## Install
 
-```text
-[CREATE] PID=28886 UID=0 COMM=touch PATH=/tmp/kubefim-example
-[RENAME] PID=28888 UID=0 COMM=mv PATH=/tmp/kubefim-example
-[CHMOD] PID=28889 UID=0 COMM=chmod PATH=/tmp/kubefim-renamed
-[DELETE] PID=28890 UID=0 COMM=rm PATH=/tmp/kubefim-renamed
+```sh
+git clone https://github.com/OWASP/www-project-kubefim.git
+cd www-project-kubefim/kubefim-src
+kubectl apply -k deployments/kubernetes
+kubectl rollout status daemonset/kubefim -n kubefim-system
+kubectl logs -n kubefim-system daemonset/kubefim -c kubefim -f
 ```
 
-The internal event contract already carries additional kernel identity and
-syscall-result fields needed for container attribution and structured output.
+The supplied manifests have been API-tested with Kubernetes 1.34, 1.35, and
+1.36. The functional eBPF test runs on Ubuntu 24.04 ARM64 with kernel 6.8 and
+K3s 1.36.1. Kernel compatibility and Kubernetes API compatibility are separate:
+the node must expose `/sys/kernel/btf/vmlinux` and syscall tracepoints.
 
-## Project direction
+## Current boundaries
 
-KubeFIM is progressing through these major areas:
+KubeFIM reports kernel activity but does not claim that every event is
+malicious. The policy engine currently runs in observe mode and preserves
+protected-path mutations. Workload-owner resolution, metrics, dashboards, and
+terminated-Pod retention are planned work.
 
-- Reliable filesystem event semantics and broader syscall coverage
-- Versioned structured JSON events
-- Container identification using cgroups and namespaces
-- Kubernetes pod, namespace, container, and node enrichment
-- Configurable FIM policies and read-access noise reduction
-- Prometheus metrics and Grafana dashboards
-- Elasticsearch and CloudWatch log-delivery examples
-- Hardened Kubernetes manifests, Helm packaging, and release engineering
+See the [agent documentation](https://github.com/OWASP/www-project-kubefim/blob/main/kubefim-src/README.md)
+for configuration, tests, security notes, and implementation details.
 
-## Get involved
+## Contributing
 
-KubeFIM welcomes contributors interested in eBPF, Linux internals, Go,
-Kubernetes, detection engineering, testing, documentation, and observability.
+Contributions are welcome in eBPF, Go, Kubernetes, detection engineering,
+testing, and documentation. Read the [contribution guidelines](CONTRIBUTING)
+and [security policy](SECURITY) before opening a pull request or report.
 
-- Read the [contribution guidelines](CONTRIBUTING)
-- Browse [open issues](https://github.com/OWASP/www-project-kubefim/issues)
-- Review the [security policy](SECURITY)
-- Join the [OWASP Slack community](https://owasp.org/slack/invite)
-- Explore the [project repository](https://github.com/OWASP/www-project-kubefim)
-
-## OWASP project
-
-OWASP KubeFIM is an OWASP Incubator project created to advance open, practical
-runtime file-integrity visibility for Kubernetes defenders. It is licensed under
-the [Apache License 2.0](LICENSE).
+OWASP KubeFIM is an OWASP Incubator project licensed under Apache License 2.0.

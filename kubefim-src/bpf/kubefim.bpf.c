@@ -5,3 +5,4 @@
 #include "src/unlink.bpf.c"
 #include "src/rename.bpf.c"
 #include "src/chmod.bpf.c"
+#include "src/exec.bpf.c"

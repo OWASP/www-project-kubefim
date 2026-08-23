@@ -33,6 +33,32 @@ type BpfEventT struct {
 	Reserved        uint32
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	BpfMapEvents              = "events"
+	BpfMapPendingEvents       = "pending_events"
+	BpfMapScratchEvent        = "scratch_event"
+	BpfProgTpEnterChmod       = "tp_enter_chmod"
+	BpfProgTpEnterExecve      = "tp_enter_execve"
+	BpfProgTpEnterExecveat    = "tp_enter_execveat"
+	BpfProgTpEnterFchmodat    = "tp_enter_fchmodat"
+	BpfProgTpEnterFchmodat2   = "tp_enter_fchmodat2"
+	BpfProgTpEnterOpenat      = "tp_enter_openat"
+	BpfProgTpEnterRenameat2   = "tp_enter_renameat2"
+	BpfProgTpEnterUnlinkat    = "tp_enter_unlinkat"
+	BpfProgTpExitChmod        = "tp_exit_chmod"
+	BpfProgTpExitExecve       = "tp_exit_execve"
+	BpfProgTpExitExecveat     = "tp_exit_execveat"
+	BpfProgTpExitFchmodat     = "tp_exit_fchmodat"
+	BpfProgTpExitFchmodat2    = "tp_exit_fchmodat2"
+	BpfProgTpExitOpenat       = "tp_exit_openat"
+	BpfProgTpExitRenameat2    = "tp_exit_renameat2"
+	BpfProgTpExitUnlinkat     = "tp_exit_unlinkat"
+	BpfProgTpSchedProcessExec = "tp_sched_process_exec"
+)
+
 // LoadBpf returns the embedded CollectionSpec for Bpf.
 func LoadBpf() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_BpfBytes)
@@ -53,7 +79,7 @@ func LoadBpf() (*ebpf.CollectionSpec, error) {
 //	*BpfMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func LoadBpfObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func LoadBpfObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := LoadBpf()
 	if err != nil {
 		return err
@@ -75,18 +101,23 @@ type BpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type BpfProgramSpecs struct {
-	TpEnterChmod     *ebpf.ProgramSpec `ebpf:"tp_enter_chmod"`
-	TpEnterFchmodat  *ebpf.ProgramSpec `ebpf:"tp_enter_fchmodat"`
-	TpEnterFchmodat2 *ebpf.ProgramSpec `ebpf:"tp_enter_fchmodat2"`
-	TpEnterOpenat    *ebpf.ProgramSpec `ebpf:"tp_enter_openat"`
-	TpEnterRenameat2 *ebpf.ProgramSpec `ebpf:"tp_enter_renameat2"`
-	TpEnterUnlinkat  *ebpf.ProgramSpec `ebpf:"tp_enter_unlinkat"`
-	TpExitChmod      *ebpf.ProgramSpec `ebpf:"tp_exit_chmod"`
-	TpExitFchmodat   *ebpf.ProgramSpec `ebpf:"tp_exit_fchmodat"`
-	TpExitFchmodat2  *ebpf.ProgramSpec `ebpf:"tp_exit_fchmodat2"`
-	TpExitOpenat     *ebpf.ProgramSpec `ebpf:"tp_exit_openat"`
-	TpExitRenameat2  *ebpf.ProgramSpec `ebpf:"tp_exit_renameat2"`
-	TpExitUnlinkat   *ebpf.ProgramSpec `ebpf:"tp_exit_unlinkat"`
+	TpEnterChmod       *ebpf.ProgramSpec `ebpf:"tp_enter_chmod"`
+	TpEnterExecve      *ebpf.ProgramSpec `ebpf:"tp_enter_execve"`
+	TpEnterExecveat    *ebpf.ProgramSpec `ebpf:"tp_enter_execveat"`
+	TpEnterFchmodat    *ebpf.ProgramSpec `ebpf:"tp_enter_fchmodat"`
+	TpEnterFchmodat2   *ebpf.ProgramSpec `ebpf:"tp_enter_fchmodat2"`
+	TpEnterOpenat      *ebpf.ProgramSpec `ebpf:"tp_enter_openat"`
+	TpEnterRenameat2   *ebpf.ProgramSpec `ebpf:"tp_enter_renameat2"`
+	TpEnterUnlinkat    *ebpf.ProgramSpec `ebpf:"tp_enter_unlinkat"`
+	TpExitChmod        *ebpf.ProgramSpec `ebpf:"tp_exit_chmod"`
+	TpExitExecve       *ebpf.ProgramSpec `ebpf:"tp_exit_execve"`
+	TpExitExecveat     *ebpf.ProgramSpec `ebpf:"tp_exit_execveat"`
+	TpExitFchmodat     *ebpf.ProgramSpec `ebpf:"tp_exit_fchmodat"`
+	TpExitFchmodat2    *ebpf.ProgramSpec `ebpf:"tp_exit_fchmodat2"`
+	TpExitOpenat       *ebpf.ProgramSpec `ebpf:"tp_exit_openat"`
+	TpExitRenameat2    *ebpf.ProgramSpec `ebpf:"tp_exit_renameat2"`
+	TpExitUnlinkat     *ebpf.ProgramSpec `ebpf:"tp_exit_unlinkat"`
+	TpSchedProcessExec *ebpf.ProgramSpec `ebpf:"tp_sched_process_exec"`
 }
 
 // BpfMapSpecs contains maps before they are loaded into the kernel.
@@ -147,34 +178,44 @@ type BpfVariables struct {
 //
 // It can be passed to LoadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type BpfPrograms struct {
-	TpEnterChmod     *ebpf.Program `ebpf:"tp_enter_chmod"`
-	TpEnterFchmodat  *ebpf.Program `ebpf:"tp_enter_fchmodat"`
-	TpEnterFchmodat2 *ebpf.Program `ebpf:"tp_enter_fchmodat2"`
-	TpEnterOpenat    *ebpf.Program `ebpf:"tp_enter_openat"`
-	TpEnterRenameat2 *ebpf.Program `ebpf:"tp_enter_renameat2"`
-	TpEnterUnlinkat  *ebpf.Program `ebpf:"tp_enter_unlinkat"`
-	TpExitChmod      *ebpf.Program `ebpf:"tp_exit_chmod"`
-	TpExitFchmodat   *ebpf.Program `ebpf:"tp_exit_fchmodat"`
-	TpExitFchmodat2  *ebpf.Program `ebpf:"tp_exit_fchmodat2"`
-	TpExitOpenat     *ebpf.Program `ebpf:"tp_exit_openat"`
-	TpExitRenameat2  *ebpf.Program `ebpf:"tp_exit_renameat2"`
-	TpExitUnlinkat   *ebpf.Program `ebpf:"tp_exit_unlinkat"`
+	TpEnterChmod       *ebpf.Program `ebpf:"tp_enter_chmod"`
+	TpEnterExecve      *ebpf.Program `ebpf:"tp_enter_execve"`
+	TpEnterExecveat    *ebpf.Program `ebpf:"tp_enter_execveat"`
+	TpEnterFchmodat    *ebpf.Program `ebpf:"tp_enter_fchmodat"`
+	TpEnterFchmodat2   *ebpf.Program `ebpf:"tp_enter_fchmodat2"`
+	TpEnterOpenat      *ebpf.Program `ebpf:"tp_enter_openat"`
+	TpEnterRenameat2   *ebpf.Program `ebpf:"tp_enter_renameat2"`
+	TpEnterUnlinkat    *ebpf.Program `ebpf:"tp_enter_unlinkat"`
+	TpExitChmod        *ebpf.Program `ebpf:"tp_exit_chmod"`
+	TpExitExecve       *ebpf.Program `ebpf:"tp_exit_execve"`
+	TpExitExecveat     *ebpf.Program `ebpf:"tp_exit_execveat"`
+	TpExitFchmodat     *ebpf.Program `ebpf:"tp_exit_fchmodat"`
+	TpExitFchmodat2    *ebpf.Program `ebpf:"tp_exit_fchmodat2"`
+	TpExitOpenat       *ebpf.Program `ebpf:"tp_exit_openat"`
+	TpExitRenameat2    *ebpf.Program `ebpf:"tp_exit_renameat2"`
+	TpExitUnlinkat     *ebpf.Program `ebpf:"tp_exit_unlinkat"`
+	TpSchedProcessExec *ebpf.Program `ebpf:"tp_sched_process_exec"`
 }
 
 func (p *BpfPrograms) Close() error {
 	return _BpfClose(
 		p.TpEnterChmod,
+		p.TpEnterExecve,
+		p.TpEnterExecveat,
 		p.TpEnterFchmodat,
 		p.TpEnterFchmodat2,
 		p.TpEnterOpenat,
 		p.TpEnterRenameat2,
 		p.TpEnterUnlinkat,
 		p.TpExitChmod,
+		p.TpExitExecve,
+		p.TpExitExecveat,
 		p.TpExitFchmodat,
 		p.TpExitFchmodat2,
 		p.TpExitOpenat,
 		p.TpExitRenameat2,
 		p.TpExitUnlinkat,
+		p.TpSchedProcessExec,
 	)
 }
 
