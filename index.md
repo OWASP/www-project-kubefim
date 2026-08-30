@@ -288,6 +288,7 @@ pitch: Kernel-level file and process visibility for Kubernetes.
   }
 
   @media (max-width: 620px) {
+    .kf-shell { width: calc(100vw - 36px); max-width: calc(100vw - 36px); }
     .kf-hero { padding: 36px 22px; border-radius: 20px; }
     .kf-hero h1 { font-size: 41px; }
     .kf-signal-stage { min-height: 270px; }
