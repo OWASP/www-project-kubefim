@@ -41,4 +41,13 @@ if [ "$dashboard_uid" != "kubefim-overview" ]; then
     exit 1
 fi
 
+grafana_events=$(curl -fsS -G \
+    --data-urlencode 'query=sum(kubefim_events_total)' \
+    "$grafana_url/api/datasources/proxy/uid/prometheus/api/v1/query" |
+    jq -r '.data.result[0].value[1] // ""')
+if [ -z "$grafana_events" ]; then
+    echo "Grafana cannot query its Prometheus datasource" >&2
+    exit 1
+fi
+
 echo "KubeFIM Prometheus and Grafana verification passed (events=$events)."
