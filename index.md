@@ -57,6 +57,7 @@ pitch: Kernel-level file and process visibility for Kubernetes.
     gap: clamp(28px, 6vw, 72px);
     align-items: center;
   }
+  .kf-hero-grid > *, .kf-install > * { min-width: 0; }
 
   .kf-kicker, .kf-section-kicker {
     display: inline-flex;
@@ -273,7 +274,7 @@ pitch: Kernel-level file and process visibility for Kubernetes.
   .kf-footnote { margin: 28px auto 8px; color: #6b7d91; font-size: 12px; text-align: center; }
 
   @media (max-width: 900px) {
-    .kf-hero-grid, .kf-install { grid-template-columns: 1fr; }
+    .kf-hero-grid, .kf-install { grid-template-columns: minmax(0, 1fr); }
     .kf-signal-stage { min-height: 300px; }
     .kf-proof { grid-template-columns: repeat(2, 1fr); }
     .kf-proof-item:nth-child(2) { border-right: 0; }
