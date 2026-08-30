@@ -134,8 +134,20 @@ A larger annotated example is available at
 [`configs/kubefim.example.yaml`](configs/kubefim.example.yaml).
 
 Policy rules can match operations, path prefixes, success or failure, UID,
-process command, event class, and severity. Exclusions remain visible in the
-configuration and decisions include the matched rule and reason.
+process command, namespace, Pod, container, and image. Exclusions remain visible
+in the configuration and decisions include the matched rule and reason.
+
+Noise exclusions use the same match fields as detection rules. In `observe`
+mode, matching events are still written and the decision log contains
+`would_suppress=true`. In `enforce` mode, a matching event is omitted from the
+event output and counted in the shutdown policy summary. The first API version
+accepts exclusions only for `open`, and each exclusion must include an operation
+and path scope. Protected paths and events promoted to `alert` cannot be
+suppressed.
+
+Start with `mode: observe`, exercise representative workloads, and review the
+matched exclusion IDs before enabling `mode: enforce`. The annotated
+configuration contains a namespace- and container-scoped example.
 
 ## Event format
 

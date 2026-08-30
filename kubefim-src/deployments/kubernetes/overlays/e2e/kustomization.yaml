@@ -4,6 +4,48 @@ resources:
   - ../../base
 patches:
   - target:
+      version: v1
+      kind: ConfigMap
+      name: kubefim-policy
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kubefim-policy
+        namespace: kubefim-system
+      data:
+        policy.yaml: |
+          apiVersion: policy.kubefim.org/v1alpha1
+          kind: KubeFIMPolicy
+          spec:
+            mode: enforce
+            defaults:
+              access: aggregate
+              mutation: audit
+            protectedPaths:
+              - /etc/**
+              - /usr/bin/**
+              - /usr/sbin/**
+            rules:
+              - id: execution-from-temporary-directory
+                match:
+                  operations: [exec]
+                  pathPrefixes: [/tmp/**]
+                  success: true
+                action: alert
+                reason: Executable launched from a temporary directory
+                owner: security
+            exclusions:
+              - id: e2e-runtime-library-reads
+                match:
+                  operations: [open]
+                  pathPrefixes: [/usr/lib/**]
+                  namespaces: [kubefim-test]
+                  containers: [workload]
+                  success: true
+                reason: Controlled runtime-library noise used by the e2e test
+                owner: kubefim-maintainers
+  - target:
       group: apps
       version: v1
       kind: DaemonSet

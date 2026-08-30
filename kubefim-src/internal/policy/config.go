@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"kubefim/internal/event"
 )
 
 type Config struct {
@@ -23,6 +25,7 @@ type SpecConfig struct {
 	ProtectedPaths []string          `yaml:"protectedPaths"`
 	Rules          []RuleConfig      `yaml:"rules"`
 	Exceptions     []ExceptionConfig `yaml:"exceptions"`
+	Exclusions     []ExclusionConfig `yaml:"exclusions"`
 }
 
 type DefaultsConfig struct {
@@ -46,11 +49,22 @@ type ExceptionConfig struct {
 	Expires string      `yaml:"expires"`
 }
 
+type ExclusionConfig struct {
+	ID     string      `yaml:"id"`
+	Match  MatchConfig `yaml:"match"`
+	Reason string      `yaml:"reason"`
+	Owner  string      `yaml:"owner"`
+}
+
 type MatchConfig struct {
 	Operations   []string `yaml:"operations"`
 	PathPrefixes []string `yaml:"pathPrefixes"`
 	Comms        []string `yaml:"comms"`
 	UIDs         []uint32 `yaml:"uids"`
+	Namespaces   []string `yaml:"namespaces"`
+	Pods         []string `yaml:"pods"`
+	Containers   []string `yaml:"containers"`
+	Images       []string `yaml:"images"`
 	Success      *bool    `yaml:"success"`
 }
 
@@ -105,8 +119,8 @@ func compile(config Config, now time.Time) (*Evaluator, error) {
 	if mode == "" {
 		mode = "observe"
 	}
-	if mode != "observe" {
-		return nil, fmt.Errorf("mode %q is unsupported; only observe is safe in v1alpha1", mode)
+	if mode != "observe" && mode != "enforce" {
+		return nil, fmt.Errorf("mode %q is unsupported; use observe or enforce", mode)
 	}
 
 	accessDefault, err := defaultAction(config.Spec.Defaults.Access, ActionAggregate)
@@ -172,6 +186,27 @@ func compile(config Config, now time.Time) (*Evaluator, error) {
 		}
 		evaluator.exceptions = append(evaluator.exceptions, exception{
 			id: value.ID, match: matcher, reason: value.Reason, expires: expires,
+		})
+	}
+
+	for _, value := range config.Spec.Exclusions {
+		if err := validateMetadata(value.ID, value.Reason, value.Owner, ids); err != nil {
+			return nil, fmt.Errorf("exclusion: %w", err)
+		}
+		if len(value.Match.Operations) == 0 || len(value.Match.PathPrefixes) == 0 {
+			return nil, fmt.Errorf("exclusion %q must match operation and path", value.ID)
+		}
+		matcher, err := compileMatch(value.Match)
+		if err != nil {
+			return nil, fmt.Errorf("exclusion %q: %w", value.ID, err)
+		}
+		for operation := range matcher.operations {
+			if operation != event.OperationOpen {
+				return nil, fmt.Errorf("exclusion %q may only suppress open events in v1alpha1", value.ID)
+			}
+		}
+		evaluator.exclusions = append(evaluator.exclusions, exclusion{
+			id: value.ID, match: matcher, reason: value.Reason,
 		})
 	}
 

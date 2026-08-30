@@ -16,6 +16,7 @@ type Evaluator struct {
 	protectedPaths  []pathPrefix
 	rules           []rule
 	exceptions      []exception
+	exclusions      []exclusion
 	now             func() time.Time
 }
 
@@ -33,11 +34,21 @@ type exception struct {
 	expires time.Time
 }
 
+type exclusion struct {
+	id     string
+	match  matcher
+	reason string
+}
+
 type matcher struct {
 	operations map[event.Operation]struct{}
 	paths      []pathPrefix
 	comms      map[string]struct{}
 	uids       map[uint32]struct{}
+	namespaces map[string]struct{}
+	pods       map[string]struct{}
+	containers map[string]struct{}
+	images     map[string]struct{}
 	success    *bool
 }
 
@@ -74,13 +85,27 @@ func (e *Evaluator) Decide(value event.Event) Decision {
 	if decision.Protected {
 		return decision
 	}
+	for _, candidate := range e.exclusions {
+		// Evaluate exclusions before exception downgrades. An event that reached
+		// alert severity must remain visible even when an approved exception later
+		// lowers its action to audit.
+		if decision.Action != ActionAlert && candidate.match.matches(value) {
+			decision.WouldSuppress = true
+			decision.Suppressed = e.mode == "enforce"
+			decision.SuppressionRule = candidate.id
+			decision.MatchedRules = append(decision.MatchedRules, candidate.id)
+			decision.Explanation = candidate.reason
+			break
+		}
+	}
+
 	for _, candidate := range e.exceptions {
 		if !candidate.expires.After(e.now()) {
 			continue
 		}
 		if decision.Action == ActionAlert && candidate.match.matches(value) {
 			decision.Action = ActionAudit
-			decision.Suppressed = true
+			decision.ExceptionApplied = true
 			decision.MatchedRules = append(decision.MatchedRules, candidate.id)
 			decision.Explanation = candidate.reason
 		}
@@ -105,6 +130,10 @@ func compileMatch(value MatchConfig) (matcher, error) {
 		operations: make(map[event.Operation]struct{}),
 		comms:      make(map[string]struct{}),
 		uids:       make(map[uint32]struct{}),
+		namespaces: make(map[string]struct{}),
+		pods:       make(map[string]struct{}),
+		containers: make(map[string]struct{}),
+		images:     make(map[string]struct{}),
 		success:    value.Success,
 	}
 
@@ -131,9 +160,22 @@ func compileMatch(value MatchConfig) (matcher, error) {
 	for _, value := range value.UIDs {
 		result.uids[value] = struct{}{}
 	}
+	if err := addStrings(result.namespaces, value.Namespaces, "namespace"); err != nil {
+		return matcher{}, err
+	}
+	if err := addStrings(result.pods, value.Pods, "pod"); err != nil {
+		return matcher{}, err
+	}
+	if err := addStrings(result.containers, value.Containers, "container"); err != nil {
+		return matcher{}, err
+	}
+	if err := addStrings(result.images, value.Images, "image"); err != nil {
+		return matcher{}, err
+	}
 
 	if len(result.operations) == 0 && len(result.paths) == 0 && len(result.comms) == 0 &&
-		len(result.uids) == 0 && result.success == nil {
+		len(result.uids) == 0 && len(result.namespaces) == 0 && len(result.pods) == 0 &&
+		len(result.containers) == 0 && len(result.images) == 0 && result.success == nil {
 		return matcher{}, fmt.Errorf("match must contain at least one predicate")
 	}
 	return result, nil
@@ -167,10 +209,34 @@ func (m matcher) matches(value event.Event) bool {
 			return false
 		}
 	}
+	if !matchesString(m.namespaces, value.Kubernetes.Namespace) ||
+		!matchesString(m.pods, value.Kubernetes.PodName) ||
+		!matchesString(m.containers, value.Kubernetes.ContainerName) ||
+		!matchesString(m.images, value.Kubernetes.Image) {
+		return false
+	}
 	if m.success != nil && value.Successful() != *m.success {
 		return false
 	}
 	return true
+}
+
+func addStrings(destination map[string]struct{}, values []string, field string) error {
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("%s cannot be empty", field)
+		}
+		destination[value] = struct{}{}
+	}
+	return nil
+}
+
+func matchesString(candidates map[string]struct{}, value string) bool {
+	if len(candidates) == 0 {
+		return true
+	}
+	_, ok := candidates[value]
+	return ok
 }
 
 func compilePathPrefix(value string) (pathPrefix, error) {

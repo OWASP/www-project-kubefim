@@ -60,15 +60,18 @@ func Classify(value event.Event) Class {
 	return ClassMutation
 }
 
-// Decision explains how a policy evaluated an event. Observe mode records this
-// decision but does not prevent the event from reaching the configured output.
+// Decision explains how a policy evaluated an event. Observe mode sets
+// WouldSuppress without setting Suppressed, so the event still reaches output.
 type Decision struct {
-	Action       Action
-	Class        Class
-	Protected    bool
-	Suppressed   bool
-	MatchedRules []string
-	Explanation  string
+	Action           Action
+	Class            Class
+	Protected        bool
+	ExceptionApplied bool
+	WouldSuppress    bool
+	Suppressed       bool
+	SuppressionRule  string
+	MatchedRules     []string
+	Explanation      string
 }
 
 type Decider interface {

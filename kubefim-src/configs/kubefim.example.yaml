@@ -1,8 +1,8 @@
 apiVersion: policy.kubefim.org/v1alpha1
 kind: KubeFIMPolicy
 spec:
-  # v1alpha1 intentionally supports observe mode only. Policy decisions are
-  # evaluated and explained, but all events still reach the normal output.
+  # observe evaluates exclusions without dropping events. Change this to
+  # enforce only after reviewing would_suppress decisions in your environment.
   mode: observe
 
   defaults:
@@ -32,6 +32,20 @@ spec:
       action: alert
       reason: Failed access to a sensitive credential file
       owner: security
+
+  # v1alpha1 exclusions are deliberately limited to open events and require an
+  # operation plus an absolute path scope. Alerts and protected paths always
+  # reach output, including in enforce mode.
+  exclusions:
+    - id: application-runtime-library-reads
+      match:
+        operations: [open]
+        pathPrefixes: [/usr/lib/**, /lib/**]
+        namespaces: [example]
+        containers: [application]
+        success: true
+      reason: Routine dynamic-library reads by the example application
+      owner: platform-security
 
   # Exceptions only downgrade an alert to audit; they never discard events.
   # v1alpha1 requires operation + path + comm + UID, plus ownership and expiry.

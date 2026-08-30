@@ -21,13 +21,24 @@ spec:
         - |
           set -eu
           test_id=kubefim-k8s-e2e
-          touch /tmp/${test_id}-a
-          cat /tmp/${test_id}-a >/dev/null
-          mv /tmp/${test_id}-a /tmp/${test_id}-b
-          chmod 600 /tmp/${test_id}-b
-          cp /bin/true /tmp/${test_id}-exec
-          chmod 700 /tmp/${test_id}-exec
-          /tmp/${test_id}-exec
-          /tmp/${test_id}-missing 2>/dev/null || true
-          rm /tmp/${test_id}-b
+          for attempt in 1 2 3; do
+            touch /tmp/${test_id}-a
+            cat /tmp/${test_id}-a >/dev/null
+            # Use shell-native redirections so both policy probes come from the
+            # already-attributed workload process. A short-lived child can race
+            # Kubernetes metadata discovery; KubeFIM correctly emits such an
+            # event instead of applying a namespace-scoped exclusion blindly.
+            : < /usr/lib/os-release
+            : < /etc/os-release
+            mv /tmp/${test_id}-a /tmp/${test_id}-b
+            chmod 600 /tmp/${test_id}-b
+            cp /bin/true /tmp/${test_id}-exec
+            chmod 700 /tmp/${test_id}-exec
+            /tmp/${test_id}-exec
+            /tmp/${test_id}-missing 2>/dev/null || true
+            rm /tmp/${test_id}-b /tmp/${test_id}-exec
+            # Repeated cycles make the assertions tolerant of an individual
+            # ring-buffer loss without weakening any required event class.
+            sleep 1
+          done
           sleep 300

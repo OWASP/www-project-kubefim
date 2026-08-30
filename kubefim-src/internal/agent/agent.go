@@ -39,6 +39,14 @@ func New(eventCollector collector.Collector, eventOutput output.Output, decider 
 // output error occurs.
 func (a *Agent) Run(ctx context.Context) error {
 	defer a.collector.Close()
+	var emitted, suppressed, wouldSuppress, protected uint64
+	loggedExclusions := make(map[string]struct{})
+	defer func() {
+		a.logger.Printf(
+			"policy summary emitted=%d suppressed=%d would_suppress=%d protected=%d",
+			emitted, suppressed, wouldSuppress, protected,
+		)
+	}()
 
 	runDone := make(chan struct{})
 	defer close(runDone)
@@ -74,21 +82,42 @@ func (a *Agent) Run(ctx context.Context) error {
 
 		record.Event = a.enricher.Enrich(ctx, record.Event)
 		decision := a.policy.Decide(record.Event)
-		if len(decision.MatchedRules) > 0 {
+		if decision.Protected {
+			protected++
+		}
+		if decision.WouldSuppress {
+			wouldSuppress++
+		}
+		logDecision := len(decision.MatchedRules) > 0
+		if decision.WouldSuppress {
+			if _, logged := loggedExclusions[decision.SuppressionRule]; logged {
+				logDecision = false
+			} else {
+				loggedExclusions[decision.SuppressionRule] = struct{}{}
+			}
+		}
+		if logDecision {
 			a.logger.Printf(
-				"policy decision action=%s class=%s protected=%t suppressed=%t rules=%v reason=%q",
+				"policy decision action=%s class=%s protected=%t exception=%t would_suppress=%t suppressed=%t rules=%v reason=%q",
 				decision.Action,
 				decision.Class,
 				decision.Protected,
+				decision.ExceptionApplied,
+				decision.WouldSuppress,
 				decision.Suppressed,
 				decision.MatchedRules,
 				decision.Explanation,
 			)
 		}
+		if decision.Suppressed {
+			suppressed++
+			continue
+		}
 
 		if err := a.output.Write(record.Event); err != nil {
 			return fmt.Errorf("write event: %w", err)
 		}
+		emitted++
 
 		if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 			return err
