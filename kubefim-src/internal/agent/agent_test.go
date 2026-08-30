@@ -47,6 +47,24 @@ type deciderFunc func(event.Event) policy.Decision
 
 func (f deciderFunc) Decide(value event.Event) policy.Decision { return f(value) }
 
+type recordingObserver struct {
+	events       int
+	emitted      int
+	lostSamples  uint64
+	readErrors   int
+	outputErrors int
+}
+
+func (o *recordingObserver) ObserveEvent(_ event.Event, _ policy.Decision, emitted bool) {
+	o.events++
+	if emitted {
+		o.emitted++
+	}
+}
+func (o *recordingObserver) ObserveLostSamples(count uint64) { o.lostSamples += count }
+func (o *recordingObserver) ObserveReadError()               { o.readErrors++ }
+func (o *recordingObserver) ObserveOutputError()             { o.outputErrors++ }
+
 func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	want := event.Event{PID: 42, UID: 1000, Comm: "touch", Path: "/tmp/example", Operation: event.OperationCreate}
@@ -57,11 +75,12 @@ func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 
 	var got event.Event
 	var logs strings.Builder
-	application := New(source, outputFunc(func(value event.Event) error {
+	observer := &recordingObserver{}
+	application := NewWithOptions(source, outputFunc(func(value event.Event) error {
 		got = value
 		cancel()
 		return nil
-	}), policy.Default(), log.New(&logs, "", 0))
+	}), policy.Default(), log.New(&logs, "", 0), Options{Observer: observer})
 
 	if err := application.Run(ctx); err != nil {
 		t.Fatal(err)
@@ -71,6 +90,9 @@ func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 	}
 	if !strings.Contains(logs.String(), "lost 3 samples") {
 		t.Fatalf("lost-sample log missing from %q", logs.String())
+	}
+	if observer.lostSamples != 3 || observer.events != 1 || observer.emitted != 1 {
+		t.Fatalf("observer state is %+v", observer)
 	}
 }
 
@@ -122,13 +144,17 @@ func TestRunReturnsOutputErrorAndClosesCollector(t *testing.T) {
 
 	wantErr := errors.New("output unavailable")
 	source := newFakeCollector(collector.Record{Event: event.Event{Operation: event.OperationOpen}})
-	application := New(source, outputFunc(func(event.Event) error {
+	observer := &recordingObserver{}
+	application := NewWithOptions(source, outputFunc(func(event.Event) error {
 		return wantErr
-	}), policy.Default(), log.New(io.Discard, "", 0))
+	}), policy.Default(), log.New(io.Discard, "", 0), Options{Observer: observer})
 
 	err := application.Run(ctx)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Run error is %v, want wrapped %v", err, wantErr)
+	}
+	if observer.events != 1 || observer.emitted != 0 || observer.outputErrors != 1 {
+		t.Fatalf("observer state is %+v", observer)
 	}
 
 	select {

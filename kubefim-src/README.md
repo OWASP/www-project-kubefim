@@ -9,7 +9,7 @@ sidecar, an injected library, or changes to their container images. Events are
 written as JSON Lines to standard output, where an existing log collector can
 route them to Elasticsearch, CloudWatch, Loki, or another backend.
 
-The current release is `v0.1.0-alpha.2`. It is suitable for evaluation and
+The current release is `v0.1.0-alpha.3`. It is suitable for evaluation and
 integration work. Read the [current limitations](#current-limitations) before
 using it on production nodes.
 
@@ -93,10 +93,61 @@ Credentials and environment variables are not included in events.
 
 Release images:
 
-- agent: `abhijitowasp/owasp-kubefim:v0.1.0-alpha.2`
-- initializer: `abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.2`
+- agent: `abhijitowasp/owasp-kubefim:v0.1.0-alpha.3`
+- initializer: `abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.3`
 
 Both tags contain `linux/amd64` and `linux/arm64` images.
+
+## Prometheus and Grafana
+
+Each agent exposes Prometheus metrics on port `2112` in Kubernetes. The endpoint
+contains counters with fixed `operation` and `result` labels; paths, namespaces,
+Pod names, container IDs, and other workload-controlled values are deliberately
+excluded. Health checks use `GET /healthz`, and Prometheus scrapes `GET /metrics`.
+
+Useful counters include:
+
+- `kubefim_events_total{operation,result}`
+- `kubefim_events_emitted_total`
+- `kubefim_events_suppressed_total`
+- `kubefim_events_would_suppress_total`
+- `kubefim_events_protected_total`
+- `kubefim_lost_samples_total`
+- `kubefim_collector_read_errors_total`
+- `kubefim_output_errors_total`
+
+To inspect the endpoint directly:
+
+```sh
+kubectl port-forward -n kubefim-system service/kubefim-metrics 2112:2112
+curl http://127.0.0.1:2112/metrics
+```
+
+The repository includes a pinned Prometheus and Grafana Docker Compose stack.
+With the metrics port-forward running on the same machine as Docker:
+
+```sh
+docker compose -f deployments/observability/docker-compose.yaml up -d
+sh tests/observability/verify-stack.sh
+```
+
+Open `http://127.0.0.1:3000/d/kubefim-overview` to view the provisioned KubeFIM
+dashboard. Grafana is anonymous and read-only in this development stack, and
+both web ports bind only to loopback. Do not expose it as a production service.
+
+When Docker runs on a remote Linux VM, bind the Kubernetes port-forward only to
+Docker's host-gateway address, start the stack there, and forward Grafana over
+SSH:
+
+```sh
+docker_gateway=$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')
+kubectl port-forward --address="$docker_gateway" -n kubefim-system service/kubefim-metrics 2112:2112
+ssh -L 3000:127.0.0.1:3000 -p 5679 vboxuser@127.0.0.1
+```
+
+The standalone binary listens on `127.0.0.1:2112` by default. Set
+`--metrics-address=:2112` to listen on all container interfaces or set
+`--metrics-address=` to disable the HTTP server.
 
 ## Cloud compatibility
 
@@ -173,10 +224,13 @@ ignore unfamiliar optional fields.
 | `internal/enrichment` | cgroup parsing and Kubernetes Pod-cache enrichment |
 | `internal/policy` | configuration loading, rule matching, and decisions |
 | `internal/output` | JSON Lines and text output encoders |
+| `internal/metrics` | fixed-cardinality Prometheus registry and HTTP server |
 | `configs` | complete policy example |
 | `deployments/kubernetes` | Kustomize base, initializer, RBAC, and test overlay |
+| `deployments/observability` | pinned Prometheus and provisioned Grafana development stack |
 | `scripts` | Linux build and privileged smoke-test helpers |
 | `tests/kubernetes` | node-initializer test and controlled workload fixture |
+| `tests/observability` | live Prometheus scrape and Grafana dashboard verifier |
 
 ## Languages and dependencies
 
@@ -234,7 +288,8 @@ kubectl kustomize deployments/kubernetes
   remains environment-specific.
 - Deployment, StatefulSet, Job, and other workload ownership is not resolved.
 - Metadata for a Pod that terminates before correlation is not retained.
-- Prometheus metrics, dashboards, and direct backend exporters are planned.
+- Direct Elasticsearch, CloudWatch, and other backend exporters are not bundled;
+  route JSON stdout with the cluster's log collector.
 - Enforcement does not occur in the kernel; KubeFIM is an observation and
   detection system.
 

@@ -24,6 +24,7 @@ type Agent struct {
 	output    output.Output
 	policy    policy.Decider
 	enricher  enrichment.Enricher
+	observer  Observer
 	logger    Logger
 }
 
@@ -32,7 +33,33 @@ func New(eventCollector collector.Collector, eventOutput output.Output, decider 
 	if len(enrichers) > 0 && enrichers[0] != nil {
 		eventEnricher = enrichers[0]
 	}
-	return &Agent{collector: eventCollector, output: eventOutput, policy: decider, enricher: eventEnricher, logger: logger}
+	return NewWithOptions(eventCollector, eventOutput, decider, logger, Options{Enricher: eventEnricher})
+}
+
+// Options supplies optional event-pipeline integrations.
+type Options struct {
+	Enricher enrichment.Enricher
+	Observer Observer
+}
+
+// NewWithOptions creates an Agent with explicit optional integrations.
+func NewWithOptions(eventCollector collector.Collector, eventOutput output.Output, decider policy.Decider, logger Logger, options Options) *Agent {
+	eventEnricher := options.Enricher
+	if eventEnricher == nil {
+		eventEnricher = enrichment.None{}
+	}
+	observer := options.Observer
+	if observer == nil {
+		observer = noopObserver{}
+	}
+	return &Agent{
+		collector: eventCollector,
+		output:    eventOutput,
+		policy:    decider,
+		enricher:  eventEnricher,
+		observer:  observer,
+		logger:    logger,
+	}
 }
 
 // Run processes events until the context is cancelled or an unrecoverable
@@ -67,11 +94,13 @@ func (a *Agent) Run(ctx context.Context) error {
 				return nil
 			}
 			a.logger.Printf("reading event: %v", err)
+			a.observer.ObserveReadError()
 			continue
 		}
 
 		if record.LostSamples > 0 {
 			a.logger.Printf("lost %d samples", record.LostSamples)
+			a.observer.ObserveLostSamples(record.LostSamples)
 			continue
 		}
 		// Enrichment and output perform file operations too. Dropping only this
@@ -111,13 +140,17 @@ func (a *Agent) Run(ctx context.Context) error {
 		}
 		if decision.Suppressed {
 			suppressed++
+			a.observer.ObserveEvent(record.Event, decision, false)
 			continue
 		}
 
 		if err := a.output.Write(record.Event); err != nil {
+			a.observer.ObserveEvent(record.Event, decision, false)
+			a.observer.ObserveOutputError()
 			return fmt.Errorf("write event: %w", err)
 		}
 		emitted++
+		a.observer.ObserveEvent(record.Event, decision, true)
 
 		if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 			return err
