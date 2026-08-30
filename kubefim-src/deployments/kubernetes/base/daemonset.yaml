@@ -28,7 +28,7 @@ spec:
       terminationGracePeriodSeconds: 10
       initContainers:
         - name: prepare-node
-          image: abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.1
+          image: abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.2
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -39,7 +39,7 @@ spec:
               mountPropagation: Bidirectional
       containers:
         - name: kubefim
-          image: abhijitowasp/owasp-kubefim:v0.1.0-alpha.1
+          image: abhijitowasp/owasp-kubefim:v0.1.0-alpha.2
           imagePullPolicy: IfNotPresent
           args:
             - --output=json

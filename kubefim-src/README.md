@@ -9,7 +9,7 @@ sidecar, an injected library, or changes to their container images. Events are
 written as JSON Lines to standard output, where an existing log collector can
 route them to Elasticsearch, CloudWatch, Loki, or another backend.
 
-The current release is `v0.1.0-alpha.1`. It is suitable for evaluation and
+The current release is `v0.1.0-alpha.2`. It is suitable for evaluation and
 integration work. Read the [current limitations](#current-limitations) before
 using it on production nodes.
 
@@ -93,8 +93,8 @@ Credentials and environment variables are not included in events.
 
 Release images:
 
-- agent: `abhijitowasp/owasp-kubefim:v0.1.0-alpha.1`
-- initializer: `abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.1`
+- agent: `abhijitowasp/owasp-kubefim:v0.1.0-alpha.2`
+- initializer: `abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.2`
 
 Both tags contain `linux/amd64` and `linux/arm64` images.
 

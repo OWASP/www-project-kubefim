@@ -1,8 +1,11 @@
 FROM busybox:1.37.0-musl@sha256:fc6dddc4c44b1bfe37f41cae8e67d1693828e8f42a91862816d7953e2c9d3f23
 
+ARG VERSION=dev
 LABEL org.opencontainers.image.title="OWASP KubeFIM node initializer" \
       org.opencontainers.image.description="Prepares and verifies Linux kernel interfaces required by KubeFIM" \
-      org.opencontainers.image.source="https://github.com/OWASP/www-project-kubefim/tree/main/kubefim-src"
+      org.opencontainers.image.source="https://github.com/OWASP/www-project-kubefim/tree/main/kubefim-src" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.licenses="Apache-2.0"
 
 COPY deployments/kubernetes/init/prepare-node.sh /usr/local/bin/prepare-node
 
