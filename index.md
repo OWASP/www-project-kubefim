@@ -220,6 +220,35 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
   .kf-flow h3 { margin-bottom: 9px; font-size: 17px; }
   .kf-flow p { margin: 0; color: var(--kf-muted); font-size: 13px; line-height: 1.55; }
 
+  .kf-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .kf-spec {
+    padding: 28px;
+    border: 1px solid var(--kf-line);
+    border-radius: 18px;
+    background: #fff;
+  }
+  .kf-spec h3 { margin-bottom: 12px; font-size: 20px; }
+  .kf-spec p { margin-bottom: 18px; color: var(--kf-muted); font-size: 14px; }
+  .kf-spec dl { display: grid; gap: 10px; margin: 0; }
+  .kf-spec dl div { display: grid; grid-template-columns: 90px 1fr; gap: 10px; padding-top: 10px; border-top: 1px solid #e8eff6; }
+  .kf-spec dt { color: #61768c; font-size: 12px; font-weight: 650; }
+  .kf-spec dd { margin: 0; color: #213d59; font-size: 12px; }
+
+  .kf-table-wrap { overflow-x: auto; border: 1px solid var(--kf-line); border-radius: 18px; background: #fff; }
+  .kf-compare { width: 100%; min-width: 760px; margin: 0; border-collapse: collapse; }
+  .kf-compare th, .kf-compare td { padding: 18px 20px; border-bottom: 1px solid #e4edf6; text-align: left; vertical-align: top; }
+  .kf-compare tr:last-child td { border-bottom: 0; }
+  .kf-compare th { background: #f4f8fc; color: #38536f; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  .kf-compare td { color: var(--kf-muted); font-size: 13px; line-height: 1.55; }
+  .kf-compare td:first-child { color: var(--kf-ink); font-weight: 750; white-space: nowrap; }
+  .kf-compare a { font-weight: 750; text-underline-offset: 3px; }
+  .kf-context-note { margin: 18px 0 0; color: #667b91; font-size: 12px; }
+
+  .kf-faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .kf-faq article { padding: 25px; border-top: 2px solid #b9d8f5; background: #f8fbfe; }
+  .kf-faq h3 { margin-bottom: 9px; font-size: 18px; }
+  .kf-faq p { margin: 0; color: var(--kf-muted); font-size: 14px; }
+
   .kf-operations { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .kf-operation { padding: clamp(28px, 5vw, 46px); border-radius: 22px; }
   .kf-operation h3 { margin-bottom: 14px; font-size: 28px; }
@@ -285,7 +314,7 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
     .kf-flow-step:last-child { border-bottom: 0; }
     .kf-flow-step::after { display: none; }
     .kf-flow-index { margin-bottom: 14px; }
-    .kf-compat { grid-template-columns: 1fr; }
+    .kf-compat, .kf-specs { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 620px) {
@@ -294,7 +323,7 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
     .kf-hero h1 { font-size: 41px; }
     .kf-signal-stage { min-height: 270px; }
     .kf-orbit { width: 250px; height: 250px; }
-    .kf-capabilities, .kf-operations { grid-template-columns: 1fr; }
+    .kf-capabilities, .kf-operations, .kf-faq { grid-template-columns: 1fr; }
     .kf-capability { min-height: auto; }
     .kf-proof { grid-template-columns: 1fr; }
     .kf-proof-item { border-right: 0; border-bottom: 1px solid var(--kf-line) !important; }
@@ -386,11 +415,57 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
       </div>
       <div class="kf-flow">
         <article class="kf-flow-step"><span class="kf-flow-index">01</span><h3>Kernel probes</h3><p>Entry and exit tracepoints correlate operation, path, identity, and result.</p></article>
-        <article class="kf-flow-step"><span class="kf-flow-index">02</span><h3>Ring buffer</h3><p>A stable binary layout carries events efficiently into user space.</p></article>
+        <article class="kf-flow-step"><span class="kf-flow-index">02</span><h3>Perf buffer</h3><p>A stable binary layout carries events efficiently into user space.</p></article>
         <article class="kf-flow-step"><span class="kf-flow-index">03</span><h3>Go agent</h3><p>The collector decodes records and resolves process container identity.</p></article>
         <article class="kf-flow-step"><span class="kf-flow-index">04</span><h3>Pod cache</h3><p>A filtered list/watch cache adds Kubernetes metadata on each node.</p></article>
         <article class="kf-flow-step"><span class="kf-flow-index">05</span><h3>Policy + output</h3><p>Rules classify events before JSON and operational metrics are exposed.</p></article>
       </div>
+    </section>
+
+    <section class="kf-section" aria-labelledby="kf-engineering">
+      <div class="kf-heading">
+        <span class="kf-section-kicker">Engineering details</span>
+        <h2 id="kf-engineering">A deliberately narrow data path.</h2>
+        <p>KubeFIM concentrates on file integrity and process execution instead of attempting to be a general-purpose kernel tracing framework.</p>
+      </div>
+      <div class="kf-specs">
+        <article class="kf-spec">
+          <h3>Capture semantics</h3>
+          <p>Syscall entry and exit tracepoints are correlated so an event contains both the requested path and the kernel return value. Successful execution is confirmed through <code>sched_process_exec</code>; failed attempts are retained from the syscall exit path.</p>
+          <dl><div><dt>Kernel maps</dt><dd>LRU pending-event map and per-CPU scratch storage</dd></div><div><dt>Transport</dt><dd>BPF perf event array</dd></div><div><dt>Operations</dt><dd>open, create, unlink, rename, chmod, chown and exec</dd></div></dl>
+        </article>
+        <article class="kf-spec">
+          <h3>Identity and enrichment</h3>
+          <p>The kernel record carries cgroup, mount-namespace and PID-namespace identity. The agent resolves that identity through the node's read-only <code>/proc</code> mount and joins it with a local Pod cache.</p>
+          <dl><div><dt>Runtimes</dt><dd>containerd, CRI-O and Docker cgroup formats</dd></div><div><dt>API access</dt><dd>Node-filtered Pod list/watch</dd></div><div><dt>RBAC</dt><dd>Pod get, list and watch only</dd></div></dl>
+        </article>
+        <article class="kf-spec">
+          <h3>Policy and telemetry</h3>
+          <p>Rules can match operation, path prefix, command, UID, namespace, Pod, container, image and syscall success. Protected paths take precedence over exclusions, and observe mode reports what would be suppressed.</p>
+          <dl><div><dt>Default</dt><dd>Observe-only; no event blocking</dd></div><div><dt>Output</dt><dd>Versioned JSON Lines on stdout</dd></div><div><dt>Health</dt><dd>Prometheus counters and HTTP health check</dd></div></dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="kf-section" aria-labelledby="kf-landscape">
+      <div class="kf-heading">
+        <span class="kf-section-kicker">Runtime security landscape</span>
+        <h2 id="kf-landscape">Where KubeFIM fits.</h2>
+        <p>These projects overlap at the Linux kernel, but they solve different operational problems. KubeFIM is the focused option when the primary requirement is Kubernetes-aware file integrity and process execution telemetry with a small, inspectable policy surface.</p>
+      </div>
+      <div class="kf-table-wrap">
+        <table class="kf-compare">
+          <thead><tr><th>Project</th><th>Primary focus</th><th>Policy model</th><th>Choose it when</th></tr></thead>
+          <tbody>
+            <tr><td>KubeFIM</td><td>File changes and process execution with process, container and Kubernetes identity.</td><td>Focused classification, protected paths, exceptions and safe noise exclusions. Observe-only by default; no runtime enforcement in the current alpha.</td><td>You want a purpose-built FIM event stream, JSON log integration and transparent policy decisions.</td></tr>
+            <tr><td><a href="https://falco.org/docs/">Falco</a></td><td>Broad runtime threat detection across kernel events and plugin-provided event sources.</td><td>A mature rules engine evaluates event streams and emits security alerts.</td><td>You need established behavioral detections, community rules and alerting across a broad runtime surface.</td></tr>
+            <tr><td><a href="https://tetragon.io/docs/">Tetragon</a></td><td>eBPF security observability and runtime enforcement for process, file and network activity.</td><td>Kubernetes tracing policies support kernel hooks, selectors, in-kernel filtering and enforcement actions.</td><td>You need programmable tracing or kernel-level enforcement across several activity classes.</td></tr>
+            <tr><td><a href="https://aquasecurity.github.io/tracee/latest/">Tracee</a></td><td>Broad Linux runtime observability, forensics and behavioral security events.</td><td>Flexible policies select system, process, file and network events and security detections.</td><td>You need comprehensive Linux event coverage, signatures and incident-forensics depth.</td></tr>
+            <tr><td><a href="https://inspektor-gadget.io/docs/latest/">Inspektor Gadget</a></td><td>An extensible framework for packaging and running eBPF observability tools as OCI gadgets.</td><td>Operators and filters control enrichment, processing and export for individual gadgets.</td><td>You need flexible ad-hoc inspection, troubleshooting, or a framework for building custom eBPF tools.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="kf-context-note">This is a scope comparison, not a performance benchmark. Capabilities were reviewed against each project's official documentation on 31 August 2026. The tools can be used together.</p>
     </section>
 
     <section class="kf-section" aria-labelledby="kf-operate">
@@ -432,6 +507,19 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
         <article class="kf-compat-card"><span class="kf-compat-label">Designed for</span><h3>Standard Linux workers</h3><p>Amazon EKS on EC2, GKE Standard, AKS, and self-managed Kubernetes clusters.</p></article>
         <article class="kf-compat-card"><span class="kf-compat-label">Verified today</span><h3>K3s on Ubuntu</h3><p>End-to-end on Ubuntu 24.04 ARM64, Linux 6.8, containerd, and K3s 1.36.1. Manifests API-validated on Kubernetes 1.34–1.36.</p></article>
         <article class="kf-compat-card"><span class="kf-compat-label">Current boundary</span><h3>Privileged access required</h3><p>Serverless and virtual nodes, plus managed modes that reject privileged DaemonSets, are not supported.</p></article>
+      </div>
+    </section>
+
+    <section class="kf-section" aria-labelledby="kf-questions">
+      <div class="kf-heading">
+        <span class="kf-section-kicker">Technical questions</span>
+        <h2 id="kf-questions">What operators usually ask first.</h2>
+      </div>
+      <div class="kf-faq">
+        <article><h3>Is KubeFIM an intrusion detection system?</h3><p>Not by itself. It produces high-context runtime events and policy classifications. A file operation or process execution is evidence to investigate, not automatic proof of malicious intent.</p></article>
+        <article><h3>Why does the DaemonSet run privileged?</h3><p>The agent must load eBPF programs, attach kernel tracepoints and observe host processes. It uses host PID visibility plus read-only tracefs and <code>/proc</code> mounts; Kubernetes API access is limited to reading Pods.</p></article>
+        <article><h3>How is noisy file activity handled?</h3><p>Policies distinguish access from mutation, support explicit match predicates, protect sensitive paths from suppression and provide observe mode before exclusions are enforced. Suppressed and would-suppress totals remain visible as metrics.</p></article>
+        <article><h3>Does KubeFIM block processes or file changes?</h3><p>No. Alpha 3 is an observability release. It records and classifies activity but does not kill processes, deny syscalls or modify workloads.</p></article>
       </div>
     </section>
 
