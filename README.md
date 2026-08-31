@@ -41,7 +41,7 @@ testing, compatibility, and security details.
 - [OWASP project page](https://owasp.org/www-project-kubefim/)
 - [Source and issues](https://github.com/OWASP/www-project-kubefim)
 - [Container images](https://hub.docker.com/r/abhijitowasp/owasp-kubefim)
-- [Releases](https://github.com/OWASP/www-project-kubefim/releases)
+- [Version tags](https://github.com/OWASP/www-project-kubefim/tags)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 
