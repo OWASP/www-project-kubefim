@@ -8,17 +8,22 @@ level: 2
 license:
   - Apache-2.0
 name: OWASP KubeFIM
-pitch: OWASP KubeFIM is an eBPF based Kubernetes File Integrity Monitoring solution.
+pitch: Open-source eBPF file integrity and process execution monitoring for Kubernetes.
 repositories:
   - name: www-project-kubefim
     url: https://github.com/OWASP/www-project-kubefim
-    description: OWASP Foundation Web Repository
-  - name: OWASP-KubeFIM
-    url: https://github.com/abhijitio/OWASP-KubeFIM
-    description: File Integrity Monitoring for Kubernetes
+    description: eBPF-based runtime file integrity and process execution monitoring for Kubernetes
 tags:
   - kubefim
   - kubernetes
-  - FIM
-type: documentation
+  - ebpf
+  - runtime-security
+  - file-integrity-monitoring
+  - container-security
+  - cloud-native
+  - linux-security
+  - observability
+  - prometheus
+  - grafana
+type: code
 website: https://owasp.org/www-project-kubefim

@@ -14,6 +14,8 @@
 ### Project Links
 
 - [Source code](https://github.com/OWASP/www-project-kubefim)
+- [Current release](https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.3)
+- [Container images](https://hub.docker.com/r/abhijitowasp/owasp-kubefim)
 - [Issue tracker](https://github.com/OWASP/www-project-kubefim/issues)
 - [Contribution guidelines](CONTRIBUTING)
 - [Security policy](SECURITY)

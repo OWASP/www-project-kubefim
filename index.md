@@ -5,6 +5,7 @@ tags: kubefim kubernetes eBPF FIM runtime-security
 level: 2
 type: Code
 pitch: Kernel-level file and process visibility for Kubernetes.
+og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
 ---
 
 <style>
@@ -308,6 +309,27 @@ pitch: Kernel-level file and process visibility for Kubernetes.
     @keyframes kf-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
   }
 </style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "OWASP KubeFIM",
+  "description": "Open-source eBPF file integrity and process execution monitoring for Kubernetes.",
+  "url": "https://owasp.org/www-project-kubefim/",
+  "codeRepository": "https://github.com/OWASP/www-project-kubefim/tree/main/kubefim-src",
+  "downloadUrl": "https://hub.docker.com/r/abhijitowasp/owasp-kubefim",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "programmingLanguage": ["Go", "C"],
+  "runtimePlatform": ["Kubernetes", "Linux", "eBPF"],
+  "version": "0.1.0-alpha.3",
+  "author": {
+    "@type": "Organization",
+    "name": "OWASP Foundation",
+    "url": "https://owasp.org/"
+  }
+}
+</script>
 
 <main class="kf-page">
   <div class="kf-shell">

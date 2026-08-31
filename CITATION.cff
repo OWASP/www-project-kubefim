@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use OWASP KubeFIM in research or engineering work, please cite the project using this metadata.
+title: OWASP KubeFIM
+type: software
+version: 0.1.0-alpha.3
+date-released: 2026-08-31
+abstract: Open-source eBPF file integrity and process execution monitoring for Kubernetes.
+authors:
+  - family-names: Chatterjee
+    given-names: Abhijit
+repository-code: https://github.com/OWASP/www-project-kubefim
+url: https://owasp.org/www-project-kubefim/
+license: Apache-2.0
+keywords:
+  - Kubernetes
+  - eBPF
+  - runtime security
+  - file integrity monitoring
+  - container security

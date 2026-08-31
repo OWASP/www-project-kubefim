@@ -1,0 +1,17 @@
+changelog:
+  categories:
+    - title: Security and monitoring
+      labels:
+        - security
+        - monitoring
+        - ebpf
+    - title: Kubernetes
+      labels:
+        - kubernetes
+        - deployment
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Other changes
+      labels:
+        - "*"
