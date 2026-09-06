@@ -8,18 +8,24 @@ import (
 
 func TestDecode(t *testing.T) {
 	raw := rawEvent{
-		TimestampNS:    123456,
-		CgroupID:       789,
-		ReturnValue:    4,
-		SchemaVersion:  SchemaVersion,
-		EventType:      uint32(OperationRename),
-		PID:            42,
-		TGID:           40,
-		PPID:           10,
-		UID:            1000,
-		GID:            1001,
-		MountNamespace: 4026532000,
-		PIDNamespace:   4026532001,
+		TimestampNS:           123456,
+		CgroupID:              789,
+		ReturnValue:           4,
+		BaseInode:             101,
+		BaseDevice:            202,
+		DestinationBaseInode:  303,
+		DestinationBaseDevice: 404,
+		SchemaVersion:         SchemaVersion,
+		EventType:             uint32(OperationRename),
+		PID:                   42,
+		TGID:                  40,
+		PPID:                  10,
+		UID:                   1000,
+		GID:                   1001,
+		MountNamespace:        4026532000,
+		PIDNamespace:          4026532001,
+		DirFD:                 7,
+		DestinationDirFD:      8,
 	}
 	copy(raw.Comm[:], "touch")
 	copy(raw.Path[:], "/tmp/source")
@@ -38,7 +44,10 @@ func TestDecode(t *testing.T) {
 		got.ReturnValue != 4 || got.PID != 42 || got.TGID != 40 || got.PPID != 10 ||
 		got.UID != 1000 || got.GID != 1001 || got.MountNamespace != 4026532000 ||
 		got.PIDNamespace != 4026532001 || got.Comm != "touch" || got.Path != "/tmp/source" ||
-		got.DestinationPath != "/tmp/destination" || got.Operation != OperationRename || !got.Successful() {
+		got.DestinationPath != "/tmp/destination" || got.DirFD != 7 || got.DestinationDirFD != 8 ||
+		got.BaseInode != 101 || got.BaseDevice != 202 || got.DestinationBaseInode != 303 ||
+		got.DestinationBaseDevice != 404 ||
+		got.Operation != OperationRename || !got.Successful() {
 		t.Fatalf("unexpected event: %+v", got)
 	}
 }
@@ -98,5 +107,24 @@ func TestEventSuccessful(t *testing.T) {
 	}
 	if !(Event{ReturnValue: 0}).Successful() {
 		t.Fatal("zero syscall return value reported as failed")
+	}
+}
+
+func TestPolicyPath(t *testing.T) {
+	tests := []struct {
+		name  string
+		event Event
+		want  string
+	}{
+		{name: "resolved", event: Event{Path: "file", ResolvedPath: "/work/file", PathResolution: PathResolutionResolved}, want: "/work/file"},
+		{name: "absolute", event: Event{Path: "/etc/passwd"}, want: "/etc/passwd"},
+		{name: "unresolved", event: Event{Path: "file", PathResolution: PathResolutionFDUnavailable}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.event.PolicyPath(); got != test.want {
+				t.Fatalf("PolicyPath() = %q, want %q", got, test.want)
+			}
+		})
 	}
 }

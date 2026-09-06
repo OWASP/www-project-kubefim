@@ -3,6 +3,12 @@ set -eu
 
 prometheus_url=${PROMETHEUS_URL:-http://127.0.0.1:9090}
 grafana_url=${GRAFANA_URL:-http://127.0.0.1:3000}
+loki_url=${LOKI_URL:-http://127.0.0.1:3100}
+
+if ! curl -fsS "$loki_url/ready" >/dev/null; then
+    echo "Loki is not ready" >&2
+    exit 1
+fi
 
 prometheus_ready=$(curl -fsS "$prometheus_url/-/ready")
 case $prometheus_ready in
@@ -38,6 +44,17 @@ fi
 dashboard_uid=$(curl -fsS "$grafana_url/api/dashboards/uid/kubefim-overview" | jq -r '.dashboard.uid // ""')
 if [ "$dashboard_uid" != "kubefim-overview" ]; then
     echo "KubeFIM dashboard was not provisioned" >&2
+    exit 1
+fi
+
+security_dashboard_uid=$(curl -fsS "$grafana_url/api/dashboards/uid/kubefim-security" | jq -r '.dashboard.uid // ""')
+if [ "$security_dashboard_uid" != "kubefim-security" ]; then
+    echo "KubeFIM security dashboard was not provisioned" >&2
+    exit 1
+fi
+
+if ! curl -fsS "$grafana_url/api/datasources/proxy/uid/loki/loki/api/v1/labels" >/dev/null; then
+    echo "Grafana cannot query its Loki datasource" >&2
     exit 1
 fi
 

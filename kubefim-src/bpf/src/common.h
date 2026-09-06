@@ -1,14 +1,19 @@
 #ifndef __COMMON_H
 #define __COMMON_H
 
-#define EVENT_SCHEMA_VERSION 1
+#define EVENT_SCHEMA_VERSION 2
 #define TASK_COMM_LEN 16
 #define EVENT_PATH_LEN 256
+#define AT_FDCWD -100
 
 struct event_t {
     __u64 timestamp_ns;
     __u64 cgroup_id;
     __s64 return_value;
+    __u64 base_inode;
+    __u64 base_device;
+    __u64 destination_base_inode;
+    __u64 destination_base_device;
     __u32 schema_version;
     __u32 event_type;
     __u32 pid;
@@ -21,6 +26,8 @@ struct event_t {
     char comm[TASK_COMM_LEN];
     char path[EVENT_PATH_LEN];
     char destination_path[EVENT_PATH_LEN];
+    __s32 dirfd;
+    __s32 destination_dirfd;
     __u32 reserved;
 };
 

@@ -37,14 +37,30 @@ func (j *JSON) Write(value event.Event) error {
 			Comm: value.Comm,
 		},
 		Target: jsonTarget{
-			Path:            value.Path,
-			DestinationPath: value.DestinationPath,
+			Path:                      value.Path,
+			DirFD:                     value.DirFD,
+			ResolvedPath:              value.ResolvedPath,
+			PathResolution:            value.PathResolution,
+			DestinationPath:           value.DestinationPath,
+			ResolvedDestinationPath:   value.ResolvedDestinationPath,
+			DestinationPathResolution: value.DestinationPathResolution,
 		},
 		Linux: jsonLinux{
 			CgroupID:       value.CgroupID,
 			MountNamespace: value.MountNamespace,
 			PIDNamespace:   value.PIDNamespace,
 		},
+	}
+	if value.Detection.Action != "" {
+		record.Detection = &jsonDetection{
+			Action: value.Detection.Action, Class: value.Detection.Class,
+			Protected: value.Detection.Protected, ExceptionApplied: value.Detection.ExceptionApplied,
+			MatchedRules: value.Detection.MatchedRules, Reason: value.Detection.Reason,
+		}
+	}
+	if value.DestinationPath != "" {
+		dirfd := value.DestinationDirFD
+		record.Target.DestinationDirFD = &dirfd
 	}
 	if value.Container.ID != "" || value.Container.Host {
 		record.Container = &jsonContainer{ID: value.Container.ID, Runtime: value.Container.Runtime, Host: value.Container.Host}
@@ -72,6 +88,16 @@ type jsonEvent struct {
 	Linux         jsonLinux       `json:"linux"`
 	Container     *jsonContainer  `json:"container,omitempty"`
 	Kubernetes    *jsonKubernetes `json:"kubernetes,omitempty"`
+	Detection     *jsonDetection  `json:"detection,omitempty"`
+}
+
+type jsonDetection struct {
+	Action           string   `json:"action"`
+	Class            string   `json:"class"`
+	Protected        bool     `json:"protected"`
+	ExceptionApplied bool     `json:"exception_applied"`
+	MatchedRules     []string `json:"matched_rules,omitempty"`
+	Reason           string   `json:"reason"`
 }
 
 type jsonContainer struct {
@@ -100,8 +126,14 @@ type jsonProcess struct {
 }
 
 type jsonTarget struct {
-	Path            string `json:"path"`
-	DestinationPath string `json:"destination_path,omitempty"`
+	Path                      string               `json:"path"`
+	DirFD                     int32                `json:"dirfd"`
+	ResolvedPath              string               `json:"resolved_path,omitempty"`
+	PathResolution            event.PathResolution `json:"path_resolution,omitempty"`
+	DestinationPath           string               `json:"destination_path,omitempty"`
+	DestinationDirFD          *int32               `json:"destination_dirfd,omitempty"`
+	ResolvedDestinationPath   string               `json:"resolved_destination_path,omitempty"`
+	DestinationPathResolution event.PathResolution `json:"destination_path_resolution,omitempty"`
 }
 
 type jsonLinux struct {

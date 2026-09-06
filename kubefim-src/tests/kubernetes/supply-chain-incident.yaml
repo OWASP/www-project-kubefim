@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubefim-demo
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: supply-chain-demo
+  namespace: kubefim-demo
+  labels:
+    app.kubernetes.io/name: supply-chain-demo
+spec:
+  restartPolicy: Never
+  containers:
+    - name: compromised-app
+      image: ubuntu:24.04
+      imagePullPolicy: IfNotPresent
+      command: [/bin/bash, -c]
+      args:
+        - |
+          set -eu
+          mkdir -p /root/.aws /app /etc/cron.d
+          printf '[default]\naws_access_key_id=DECOY_ONLY\n' > /root/.aws/credentials
+          printf '//registry.npmjs.org/:_authToken=DECOY_ONLY\n' > /root/.npmrc
+          printf 'OPENAI_API_KEY=DECOY_ONLY\n' > /app/.env
+          sleep 10
+
+          for attempt in 1 2 3; do
+            : < /root/.aws/credentials
+            : < /root/.npmrc
+            : < /app/.env
+            sleep 1
+            cp /bin/true /tmp/.update-agent
+            sleep 1
+            chmod 700 /tmp/.update-agent
+            sleep 1
+            /tmp/.update-agent
+            sleep 1
+            printf '# KubeFIM harmless persistence simulation\n' > /etc/cron.d/system-update
+            sleep 1
+            rm /tmp/.update-agent
+            sleep 2
+          done
+          touch /tmp/kubefim-supply-chain-demo-complete
+          sleep 300

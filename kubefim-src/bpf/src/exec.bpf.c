@@ -3,14 +3,17 @@
 #include "common.h"
 #include "event_helpers.h"
 
-static __always_inline int enter_exec(const char *filename)
+static __always_inline int enter_exec(__s32 dirfd, const char *filename)
 {
     struct event_t *event = new_event();
 
     if (!event)
         return 0;
     fill_event_identity(event, EVENT_EXEC);
+    event->dirfd = dirfd;
     bpf_probe_read_user_str(event->path, sizeof(event->path), filename);
+    if (event->path[0] != '/')
+        capture_path_base(event->dirfd, &event->base_inode, &event->base_device);
     return stash_event(event);
 }
 
@@ -26,7 +29,7 @@ static __always_inline int exit_exec(struct trace_event_raw_sys_exit *ctx)
 SEC("tracepoint/syscalls/sys_enter_execve")
 int tp_enter_execve(struct trace_event_raw_sys_enter *ctx)
 {
-    return enter_exec((const char *)ctx->args[0]);
+    return enter_exec(AT_FDCWD, (const char *)ctx->args[0]);
 }
 
 SEC("tracepoint/syscalls/sys_exit_execve")
@@ -38,7 +41,7 @@ int tp_exit_execve(struct trace_event_raw_sys_exit *ctx)
 SEC("tracepoint/syscalls/sys_enter_execveat")
 int tp_enter_execveat(struct trace_event_raw_sys_enter *ctx)
 {
-    return enter_exec((const char *)ctx->args[1]);
+    return enter_exec((__s32)ctx->args[0], (const char *)ctx->args[1]);
 }
 
 SEC("tracepoint/syscalls/sys_exit_execveat")

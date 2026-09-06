@@ -402,6 +402,38 @@ spec:
 	}
 }
 
+func TestUnresolvedMutationAlerts(t *testing.T) {
+	decision := Default().Decide(event.Event{
+		Operation:      event.OperationDelete,
+		Path:           "relative/file",
+		PathResolution: event.PathResolutionProcessExited,
+	})
+	if decision.Action != ActionAlert || decision.Suppressed {
+		t.Fatalf("decision is %+v", decision)
+	}
+	if len(decision.MatchedRules) != 1 || decision.MatchedRules[0] != "builtin/unresolved-path" {
+		t.Fatalf("matched rules are %v", decision.MatchedRules)
+	}
+}
+
+func TestResolvedPathDrivesPolicy(t *testing.T) {
+	evaluator := mustDecode(t, `
+apiVersion: policy.kubefim.org/v1alpha1
+kind: KubeFIMPolicy
+spec:
+  protectedPaths: [/etc/**]
+`)
+	decision := evaluator.Decide(event.Event{
+		Operation:      event.OperationDelete,
+		Path:           "passwd",
+		ResolvedPath:   "/etc/passwd",
+		PathResolution: event.PathResolutionResolved,
+	})
+	if !decision.Protected || decision.Action != ActionAlert {
+		t.Fatalf("decision is %+v", decision)
+	}
+}
+
 func mustDecode(t *testing.T, input string) *Evaluator {
 	t.Helper()
 	evaluator, err := Decode(strings.NewReader(input), testNow)

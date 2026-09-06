@@ -10,13 +10,19 @@ source_path="/tmp/${test_id}-a"
 destination_path="/tmp/${test_id}-b"
 executable_path="/tmp/${test_id}-exec"
 missing_executable_path="/tmp/${test_id}-missing"
+relative_name="${test_id}-relative"
+relative_path="/tmp/${relative_name}"
+dirfd_name="${test_id}-dirfd"
+dirfd_path="/tmp/${dirfd_name}"
 execve_launcher="/tmp/${test_id}-execve"
 execveat_launcher="/tmp/${test_id}-execveat"
+openat_launcher="/tmp/${test_id}-openat"
 log_file="$(mktemp)"
 agent_pid=""
 
 cc -Wall -Wextra -Werror scripts/testdata/execve.c -o "${execve_launcher}"
 cc -Wall -Wextra -Werror scripts/testdata/execveat.c -o "${execveat_launcher}"
+cc -Wall -Wextra -Werror scripts/testdata/openat.c -o "${openat_launcher}"
 
 cleanup() {
     if [[ -n "${agent_pid}" ]] && kill -0 "${agent_pid}" 2>/dev/null; then
@@ -24,7 +30,8 @@ cleanup() {
         wait "${agent_pid}" 2>/dev/null || true
     fi
     rm -f "${source_path}" "${destination_path}" "${executable_path}" \
-        "${execve_launcher}" "${execveat_launcher}" "${log_file}"
+        "${relative_path}" "${dirfd_path}" "${execve_launcher}" \
+        "${execveat_launcher}" "${openat_launcher}" "${log_file}"
 }
 trap cleanup EXIT
 
@@ -44,6 +51,17 @@ if ! kill -0 "${agent_pid}" 2>/dev/null; then
 fi
 
 touch "${source_path}"
+original_directory="${PWD}"
+cd /tmp
+: >"${relative_name}"
+for _ in {1..40}; do
+    if grep -F "${relative_name}" "${log_file}" >/dev/null; then
+        break
+    fi
+    sleep 0.05
+done
+cd "${original_directory}"
+"${openat_launcher}" /tmp "${dirfd_name}"
 cat "${source_path}" >/dev/null
 mv "${source_path}" "${destination_path}"
 chmod 600 "${destination_path}"
@@ -70,6 +88,20 @@ if [[ "${output_format}" == "json" ]]; then
     done
     exec_count="$(grep -F "\"operation\":\"exec\"" "${log_file}" | \
         grep -F "\"path\":\"${executable_path}\"" | wc -l)"
+    if ! grep -F "\"path\":\"${relative_name}\"" "${log_file}" | \
+        grep -F "\"resolved_path\":\"${relative_path}\"" | \
+        grep -F '"path_resolution":"resolved"' >/dev/null; then
+        echo "Missing resolved relative-path event for ${relative_name}" >&2
+        cat "${log_file}" >&2
+        exit 1
+    fi
+    if ! grep -F "\"path\":\"${dirfd_name}\"" "${log_file}" | \
+        grep -F "\"resolved_path\":\"${dirfd_path}\"" | \
+        grep -F '"path_resolution":"resolved"' >/dev/null; then
+        echo "Missing directory-FD path event for ${dirfd_name}" >&2
+        cat "${log_file}" >&2
+        exit 1
+    fi
 else
     expected_events=("[CREATE]" "[OPEN]" "[RENAME]" "[CHMOD]" "[DELETE]" "[EXEC]")
     for expected in "${expected_events[@]}"; do

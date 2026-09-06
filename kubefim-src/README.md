@@ -9,7 +9,7 @@ sidecar, an injected library, or changes to their container images. Events are
 written as JSON Lines to standard output, where an existing log collector can
 route them to Elasticsearch, CloudWatch, Loki, or another backend.
 
-The current release is `v0.1.0-alpha.3`. It is suitable for evaluation and
+The current release is `v0.1.0-alpha.4`. It is suitable for evaluation and
 integration work. Read the [current limitations](#current-limitations) before
 using it on production nodes.
 
@@ -20,6 +20,7 @@ using it on production nodes.
 - rename through `renameat2`, including source and destination paths
 - permission changes through `chmod`, `fchmodat`, and `fchmodat2`
 - successful and failed `execve` and `execveat` process execution
+- requested path, directory file descriptor, resolved path, and resolution status
 - syscall result, PID, TGID, PPID, UID, GID, and process command
 - cgroup ID, mount namespace ID, and PID namespace ID
 - container runtime and full container ID
@@ -33,14 +34,22 @@ cannot silently remove evidence.
 ## How it works
 
 The kernel programs attach to syscall entry and exit tracepoints. Entry probes
-copy the operation and pathname into a bounded map. Exit probes add the return
-value and submit a completed event through an eBPF ring buffer. Process
+copy the operation and pathname into a bounded map. For a relative path, the
+probe also records the identity of the working directory or directory file
+descriptor used by the syscall. Exit probes add the return value and submit a
+completed event through an eBPF perf buffer. Process
 execution uses the scheduler execution tracepoint to capture the successful
 image transition while retaining failed syscall results.
 
-The Go agent reads the ring buffer and resolves the process cgroup from the
-host's `/proc`. Containerd, CRI-O, and Docker cgroup paths are parsed into a full
-container ID. In Kubernetes, a node-filtered Pod list/watch cache maps that ID
+The Go agent resolves relative paths through the process view under `/proc`. It
+compares the directory device and inode with the identity captured at syscall
+entry, so a changed working directory or reused file descriptor is reported as
+unresolved instead of producing a convincing but incorrect path. The original
+syscall argument is always retained.
+
+The same `/proc` view is used to resolve the process cgroup. Containerd, CRI-O,
+and Docker cgroup paths are parsed into a full container ID. In Kubernetes, a
+node-filtered Pod list/watch cache maps that ID
 to Pod status. This avoids an API request for every kernel event and keeps API
 traffic bounded as event volume grows.
 
@@ -49,8 +58,9 @@ The final path is:
 ```text
 Linux syscall
   -> eBPF entry/exit correlation
-  -> ring buffer
+  -> perf buffer
   -> Go event decoder
+  -> verified relative-path resolution
   -> cgroup and container resolution
   -> Kubernetes Pod cache
   -> policy decision
@@ -93,8 +103,8 @@ Credentials and environment variables are not included in events.
 
 Release images:
 
-- agent: `abhijitowasp/owasp-kubefim:v0.1.0-alpha.3`
-- initializer: `abhijitowasp/owasp-kubefim:init-v0.1.0-alpha.3`
+- agent: `owasp/kubefim:v0.1.0-alpha.4`
+- initializer: `owasp/kubefim:init-v0.1.0-alpha.4`
 
 Both tags contain `linux/amd64` and `linux/arm64` images.
 
@@ -123,7 +133,8 @@ kubectl port-forward -n kubefim-system service/kubefim-metrics 2112:2112
 curl http://127.0.0.1:2112/metrics
 ```
 
-The repository includes a pinned Prometheus and Grafana Docker Compose stack.
+The repository includes a pinned Prometheus, Loki, and Grafana Docker Compose
+stack. Prometheus holds bounded metrics; Loki holds the full JSON event records.
 With the metrics port-forward running on the same machine as Docker:
 
 ```sh
@@ -131,8 +142,19 @@ docker compose -f deployments/observability/docker-compose.yaml up -d
 sh tests/observability/verify-stack.sh
 ```
 
-Open `http://127.0.0.1:3000/d/kubefim-overview` to view the provisioned KubeFIM
-dashboard. Grafana is anonymous and read-only in this development stack, and
+Open `http://127.0.0.1:3000/d/kubefim-overview` to view the KubeFIM metrics
+dashboard. The security event dashboard is available at
+`http://127.0.0.1:3000/d/kubefim-security`.
+
+Load a collected KubeFIM log into the development Loki instance with:
+
+```sh
+scripts/push-logs-to-loki.sh kubefim.log
+```
+
+The loader accepts only KubeFIM JSON events containing Kubernetes attribution.
+Paths and container IDs remain JSON fields instead of Loki stream labels.
+Grafana is anonymous and read-only in this development stack, and
 both web ports bind only to loopback. Do not expose it as a production service.
 
 When Docker runs on a remote Linux VM, bind the Kubernetes port-forward only to
@@ -148,6 +170,15 @@ ssh -L 3000:127.0.0.1:3000 -p 5679 vboxuser@127.0.0.1
 The standalone binary listens on `127.0.0.1:2112` by default. Set
 `--metrics-address=:2112` to listen on all container interfaces or set
 `--metrics-address=` to disable the HTTP server.
+
+## Security demonstration
+
+The repository includes a harmless supply-chain compromise simulation. A test
+Pod reads decoy credential files, stages and executes a temporary payload,
+creates a cron persistence file, and removes the payload. KubeFIM verifies each
+behavior with Kubernetes workload attribution and policy alerts. See the
+[supply-chain incident demonstration](docs/supply-chain-incident-demo.md) for
+the scenario, commands, expected evidence, and safety boundaries.
 
 ## Cloud compatibility
 
@@ -205,12 +236,19 @@ configuration contains a namespace- and container-scoped example.
 Each stdout line is an independent JSON object:
 
 ```json
-{"api_version":"events.kubefim.org/v1alpha1","schema_version":1,"operation":"exec","success":true,"return_value":0,"process":{"pid":131337,"uid":0,"comm":"bash"},"target":{"path":"/tmp/tool"},"container":{"id":"<container-id>","runtime":"containerd","host":false},"kubernetes":{"node":"worker-1","namespace":"payments","pod_name":"api-6c89d","pod_uid":"<pod-uid>","container_name":"api","image":"example/api:v1","image_id":"<image-id>"}}
+{"api_version":"events.kubefim.org/v1alpha1","schema_version":2,"operation":"create","success":true,"return_value":3,"process":{"pid":131337,"uid":0,"comm":"node"},"target":{"path":"cache/state.json","dirfd":-100,"resolved_path":"/app/cache/state.json","path_resolution":"resolved"},"container":{"id":"<container-id>","runtime":"containerd","host":false},"kubernetes":{"node":"worker-1","namespace":"payments","pod_name":"api-6c89d","pod_uid":"<pod-uid>","container_name":"api","image":"example/api:v1","image_id":"<image-id>"}}
 ```
 
 `api_version` identifies the public JSON contract. `schema_version` identifies
 the kernel/userspace binary event layout. Consumers should use `api_version` and
 ignore unfamiliar optional fields.
+
+`path` is the exact syscall argument. `resolved_path` is included for an
+absolute path or when a relative base still matches the directory captured by
+the kernel. `path_resolution` can be `absolute`, `resolved`, `unresolved`,
+`process_exited`, `fd_unavailable`, or `base_changed`. Policy matching does not
+use an unverified relative path. An unresolved mutation is promoted to an alert
+and cannot be excluded.
 
 ## Repository layout
 
@@ -241,7 +279,7 @@ are YAML; the node initializer and integration tests use POSIX shell.
 The runtime Go dependency set is deliberately small:
 
 - [`github.com/cilium/ebpf`](https://github.com/cilium/ebpf) loads programs,
-  attaches tracepoints, reads maps, and consumes the ring buffer
+  attaches tracepoints, reads maps, and consumes the perf buffer
 - [`gopkg.in/yaml.v3`](https://github.com/go-yaml/yaml) decodes policy files
 - [`golang.org/x/sys`](https://pkg.go.dev/golang.org/x/sys) provides low-level
   operating-system interfaces used transitively
@@ -282,8 +320,10 @@ kubectl kustomize deployments/kubernetes
 ## Current limitations
 
 - KubeFIM currently requires a privileged security context.
-- Paths are syscall arguments and are not yet canonicalized against directory
-  file descriptors, mount roots, or symbolic links.
+- Relative paths are anchored to a verified working directory or directory file
+  descriptor when that process state is still available. Resolution is lexical;
+  it does not dereference every symbolic link or reconstruct a path after a
+  concurrent mount or directory rename.
 - Open events are intentionally available but noisy; production policy tuning
   remains environment-specific.
 - Deployment, StatefulSet, Job, and other workload ownership is not resolved.

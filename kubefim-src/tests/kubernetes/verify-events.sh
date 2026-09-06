@@ -29,6 +29,14 @@ require_event exec /tmp/kubefim-k8s-e2e-exec
 require_event delete /tmp/kubefim-k8s-e2e-b
 require_event open /etc/os-release
 
+if ! grep -F '"path":"kubefim-k8s-e2e-relative"' "$log_file" |
+    grep -F '"resolved_path":"/tmp/kubefim-k8s-e2e-relative"' |
+    grep -F '"path_resolution":"resolved"' |
+    grep -F '"namespace":"kubefim-test"' >/dev/null; then
+    echo "missing resolved Kubernetes relative-path event" >&2
+    exit 1
+fi
+
 if grep -F '"path":"/usr/lib/os-release"' "$log_file" |
     grep -F '"namespace":"kubefim-test"' >/dev/null; then
     echo "excluded /usr/lib/os-release event reached output" >&2

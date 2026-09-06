@@ -35,6 +35,36 @@ patches:
                 action: alert
                 reason: Executable launched from a temporary directory
                 owner: security
+              - id: cloud-credential-access
+                match:
+                  operations: [open]
+                  pathPrefixes: [/root/.aws/credentials, /root/.npmrc, /app/.env]
+                  namespaces: [kubefim-demo]
+                  containers: [compromised-app]
+                  success: true
+                action: alert
+                reason: Package process accessed credential material
+                owner: security
+              - id: temporary-payload-staging
+                match:
+                  operations: [create, chmod, delete]
+                  pathPrefixes: [/tmp/.update-agent]
+                  namespaces: [kubefim-demo]
+                  containers: [compromised-app]
+                  success: true
+                action: alert
+                reason: Hidden payload staged in a temporary directory
+                owner: security
+              - id: cron-persistence-attempt
+                match:
+                  operations: [create]
+                  pathPrefixes: [/etc/cron.d/**]
+                  namespaces: [kubefim-demo]
+                  containers: [compromised-app]
+                  success: true
+                action: alert
+                reason: Process created a cron persistence file
+                owner: security
             exclusions:
               - id: e2e-runtime-library-reads
                 match:

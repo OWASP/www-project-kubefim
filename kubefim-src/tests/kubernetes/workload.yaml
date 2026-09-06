@@ -23,6 +23,10 @@ spec:
           test_id=kubefim-k8s-e2e
           for attempt in 1 2 3; do
             touch /tmp/${test_id}-a
+            cd /tmp
+            : > ${test_id}-relative
+            sleep 1
+            cd /
             cat /tmp/${test_id}-a >/dev/null
             # Use shell-native redirections so both policy probes come from the
             # already-attributed workload process. A short-lived child can race
@@ -38,7 +42,7 @@ spec:
             /tmp/${test_id}-missing 2>/dev/null || true
             rm /tmp/${test_id}-b /tmp/${test_id}-exec
             # Repeated cycles make the assertions tolerant of an individual
-            # ring-buffer loss without weakening any required event class.
+            # perf-buffer loss without weakening any required event class.
             sleep 1
           done
           sleep 300

@@ -16,7 +16,7 @@ in [`kubefim-src`](kubefim-src/). The OWASP project page is generated from
 
 ## Current release scope
 
-The current evaluation release is [`v0.1.0-alpha.3`](https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.3).
+The current evaluation release is [`v0.1.0-alpha.4`](https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.4).
 
 - `openat`, `unlinkat`, `renameat2`, path-based `chmod`, `execve`, and `execveat`
 - syscall success or failure and return value
@@ -40,7 +40,7 @@ testing, compatibility, and security details.
 
 - [OWASP project page](https://owasp.org/www-project-kubefim/)
 - [Source and issues](https://github.com/OWASP/www-project-kubefim)
-- [Container images](https://hub.docker.com/r/abhijitowasp/owasp-kubefim)
+- [Container images](https://hub.docker.com/r/owasp/kubefim)
 - [Version tags](https://github.com/OWASP/www-project-kubefim/tags)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)

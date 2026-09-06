@@ -21,6 +21,7 @@ func main() {
 	configPath := flag.String("config", "", "path to a KubeFIM host policy YAML file")
 	outputFormat := flag.String("output", "text", "event output format: text or json")
 	metricsAddress := flag.String("metrics-address", "127.0.0.1:2112", "Prometheus and health listen address; empty disables HTTP")
+	procRoot := flag.String("proc-root", "/proc", "proc filesystem used for process and path enrichment")
 	flag.Parse()
 
 	signalContext, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -55,13 +56,13 @@ func main() {
 		logger.Fatal(err)
 	}
 	policyEvaluator := policy.Default()
-	var eventEnricher enrichment.Enricher = enrichment.None{}
+	eventEnrichers := enrichment.Chain{enrichment.NewPathResolver(*procRoot)}
 	if node := os.Getenv("NODE_NAME"); node != "" {
-		kubernetesEnricher, err := enrichment.NewInCluster(node, "/host/proc", logger)
+		kubernetesEnricher, err := enrichment.NewInCluster(node, *procRoot, logger)
 		if err != nil {
 			logger.Fatalf("initialize Kubernetes enrichment: %v", err)
 		}
-		eventEnricher = kubernetesEnricher
+		eventEnrichers = append(eventEnrichers, kubernetesEnricher)
 		go kubernetesEnricher.Run(ctx)
 		logger.Printf("Kubernetes enrichment enabled for node %s", node)
 	}
@@ -82,7 +83,7 @@ func main() {
 	}
 
 	kubefim := agent.NewWithOptions(eventCollector, eventOutput, policyEvaluator, logger, agent.Options{
-		Enricher: eventEnricher,
+		Enricher: eventEnrichers,
 		Observer: metricRegistry,
 	})
 	if err := kubefim.Run(ctx); err != nil {

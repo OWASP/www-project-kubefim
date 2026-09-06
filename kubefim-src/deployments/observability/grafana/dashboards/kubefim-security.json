@@ -1,0 +1,76 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(count_over_time({job=\"kubefim\"} |~ \"cloud-credential-access|temporary-payload-staging|execution-from-temporary-directory|cron-persistence-attempt\" | json | kubernetes_namespace=~\"$namespace\" | detection_action=\"alert\" [$__range]))", "queryType": "instant", "refId": "A"}],
+      "title": "Scenario alerts",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(count_over_time({job=\"kubefim\"} | json | kubernetes_namespace=~\"$namespace\" | detection_protected=\"true\" [$__range]))", "queryType": "instant", "refId": "A"}],
+      "title": "Protected path events",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(count_over_time({job=\"kubefim\"} | json | kubernetes_namespace=~\"$namespace\" |= \"cloud-credential-access\" [$__range]))", "queryType": "instant", "refId": "A"}],
+      "title": "Credential access alerts",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(count_over_time({job=\"kubefim\"} | json | kubernetes_namespace=~\"$namespace\" |= \"cron-persistence-attempt\" [$__range]))", "queryType": "instant", "refId": "A"}],
+      "title": "Persistence alerts",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "events", "axisPlacement": "auto", "drawStyle": "bars", "fillOpacity": 35, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "normal"}, "thresholdsStyle": {"mode": "off"}}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 5},
+      "id": 5,
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "sum by (operation) (count_over_time({job=\"kubefim\"} |~ \"cloud-credential-access|temporary-payload-staging|execution-from-temporary-directory|cron-persistence-attempt\" | json | kubernetes_namespace=~\"$namespace\" | detection_action=\"alert\" [$__auto]))", "legendFormat": "{{operation}}", "queryType": "range", "refId": "A"}],
+      "title": "Alert activity by operation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 13, "w": 24, "x": 0, "y": 13},
+      "id": 6,
+      "options": {"dedupStrategy": "none", "enableInfiniteScrolling": false, "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Ascending", "wrapLogMessage": true},
+      "targets": [{"editorMode": "code", "expr": "{job=\"kubefim\"} |~ \"cloud-credential-access|temporary-payload-staging|execution-from-temporary-directory|cron-persistence-attempt\" | json | kubernetes_namespace=~\"$namespace\" | detection_action=\"alert\" | line_format \"{{.detection_action}} | {{.operation}} | {{.target_resolved_path}} | {{.process_comm}} | {{.kubernetes_namespace}}/{{.kubernetes_pod_name}} | {{.detection_reason}}\"", "queryType": "range", "refId": "A"}],
+      "title": "Incident evidence",
+      "type": "logs"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["kubefim", "security", "loki", "incidents"],
+  "templating": {"list": [{"current": {"selected": false, "text": "kubefim-demo", "value": "kubefim-demo"}, "hide": 0, "includeAll": true, "label": "Namespace", "multi": true, "name": "namespace", "options": [], "query": "kubefim-demo,kubefim-test", "skipUrlSync": false, "type": "custom"}]},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "KubeFIM Security Events",
+  "uid": "kubefim-security",
+  "version": 1
+}

@@ -347,7 +347,7 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
   "description": "Open-source eBPF file integrity and process execution monitoring for Kubernetes.",
   "url": "https://owasp.org/www-project-kubefim/",
   "codeRepository": "https://github.com/OWASP/www-project-kubefim/tree/main/kubefim-src",
-  "downloadUrl": "https://hub.docker.com/r/abhijitowasp/owasp-kubefim",
+  "downloadUrl": "https://hub.docker.com/r/owasp/kubefim",
   "license": "https://www.apache.org/licenses/LICENSE-2.0",
   "programmingLanguage": ["Go", "C"],
   "runtimePlatform": ["Kubernetes", "Linux", "eBPF"],
@@ -492,7 +492,7 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
         <span class="kf-section-kicker" style="color:#7fdff0">Start on a Linux cluster</span>
         <h2 id="kf-install-title">Deploy one sensor on every node.</h2>
         <p>The initializer validates BTF and tracefs interfaces; it does not install kernel packages or download headers onto your nodes.</p>
-        <div class="kf-install-links"><a href="https://github.com/OWASP/www-project-kubefim/blob/main/kubefim-src/README.md#requirements">Review requirements</a><a href="https://hub.docker.com/r/abhijitowasp/owasp-kubefim">View container images</a></div>
+        <div class="kf-install-links"><a href="https://github.com/OWASP/www-project-kubefim/blob/main/kubefim-src/README.md#requirements">Review requirements</a><a href="https://hub.docker.com/r/owasp/kubefim">View container images</a></div>
       </div>
       <div class="kf-command"><span class="kf-command-label">Deploy with Kustomize</span><code>kubectl apply -k kubefim-src/deployments/kubernetes</code></div>
     </section>
@@ -530,6 +530,6 @@ og_image: /www-project-kubefim/assets/images/kubefim-logo-v2.png
       <div class="kf-actions"><a class="kf-button kf-button-primary" href="https://github.com/OWASP/www-project-kubefim/issues">Open an issue&nbsp; →</a><a class="kf-button" href="https://github.com/OWASP/www-project-kubefim/blob/main/CONTRIBUTING.md">Contribute</a><a class="kf-button" href="https://github.com/OWASP/www-project-kubefim/blob/main/SECURITY.md">Report a vulnerability</a></div>
     </section>
 
-    <p class="kf-footnote">OWASP KubeFIM v0.1.0-alpha.3 · OWASP Incubator project · Apache License 2.0 · Observe-only by default</p>
+    <p class="kf-footnote">OWASP KubeFIM v0.1.0-alpha.4 · OWASP Incubator project · Apache License 2.0 · Observe-only by default</p>
   </div>
 </main>

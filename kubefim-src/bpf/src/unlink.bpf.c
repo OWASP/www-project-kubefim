@@ -11,7 +11,10 @@ int tp_enter_unlinkat(struct trace_event_raw_sys_enter *ctx)
     if (!event)
         return 0;
     fill_event_identity(event, EVENT_DELETE);
+    event->dirfd = (__s32)ctx->args[0];
     bpf_probe_read_user_str(event->path, sizeof(event->path), (const char *)ctx->args[1]);
+    if (event->path[0] != '/')
+        capture_path_base(event->dirfd, &event->base_inode, &event->base_device);
     return stash_event(event);
 }
 

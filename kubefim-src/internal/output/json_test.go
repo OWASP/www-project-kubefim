@@ -34,9 +34,52 @@ func TestJSONWriteRename(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := `{"api_version":"events.kubefim.org/v1alpha1","schema_version":1,"timestamp_ns":123456789,"operation":"rename","success":true,"return_value":0,"process":{"pid":42,"tgid":40,"ppid":10,"uid":1000,"gid":1001,"comm":"mv"},"target":{"path":"/tmp/source","destination_path":"/tmp/destination"},"linux":{"cgroup_id":88,"mount_namespace_id":4026532000,"pid_namespace_id":4026532001}}` + "\n"
+	want := `{"api_version":"events.kubefim.org/v1alpha1","schema_version":1,"timestamp_ns":123456789,"operation":"rename","success":true,"return_value":0,"process":{"pid":42,"tgid":40,"ppid":10,"uid":1000,"gid":1001,"comm":"mv"},"target":{"path":"/tmp/source","dirfd":0,"destination_path":"/tmp/destination","destination_dirfd":0},"linux":{"cgroup_id":88,"mount_namespace_id":4026532000,"pid_namespace_id":4026532001}}` + "\n"
 	if got := destination.String(); got != want {
 		t.Fatalf("JSON output is %q, want %q", got, want)
+	}
+}
+
+func TestJSONWriteResolvedPath(t *testing.T) {
+	var destination bytes.Buffer
+	writer := NewJSON(&destination)
+	value := event.Event{
+		SchemaVersion: event.SchemaVersion, Operation: event.OperationCreate, ReturnValue: 3,
+		Path: "cache/item", DirFD: event.ATFDCWD, ResolvedPath: "/srv/cache/item",
+		PathResolution: event.PathResolutionResolved,
+	}
+	if err := writer.Write(value); err != nil {
+		t.Fatal(err)
+	}
+	var got jsonEvent
+	if err := json.Unmarshal(destination.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Target.Path != "cache/item" || got.Target.DirFD != event.ATFDCWD ||
+		got.Target.ResolvedPath != "/srv/cache/item" || got.Target.PathResolution != event.PathResolutionResolved {
+		t.Fatalf("target = %+v", got.Target)
+	}
+}
+
+func TestJSONWriteDetection(t *testing.T) {
+	var destination bytes.Buffer
+	value := event.Event{
+		Operation: event.OperationExec,
+		Detection: event.Detection{
+			Action: "alert", Class: "mutation", Protected: true,
+			MatchedRules: []string{"temporary-execution", "builtin/protected-path"},
+			Reason:       "temporary payload executed",
+		},
+	}
+	if err := NewJSON(&destination).Write(value); err != nil {
+		t.Fatal(err)
+	}
+	var got jsonEvent
+	if err := json.Unmarshal(destination.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Detection == nil || got.Detection.Action != "alert" || !got.Detection.Protected || len(got.Detection.MatchedRules) != 2 {
+		t.Fatalf("detection = %+v", got.Detection)
 	}
 }
 

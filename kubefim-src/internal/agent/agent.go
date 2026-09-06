@@ -8,6 +8,7 @@ import (
 
 	"kubefim/internal/collector"
 	"kubefim/internal/enrichment"
+	"kubefim/internal/event"
 	"kubefim/internal/output"
 	"kubefim/internal/policy"
 )
@@ -142,6 +143,11 @@ func (a *Agent) Run(ctx context.Context) error {
 			suppressed++
 			a.observer.ObserveEvent(record.Event, decision, false)
 			continue
+		}
+		record.Event.Detection = event.Detection{
+			Action: decision.Action.String(), Class: string(decision.Class),
+			Protected: decision.Protected, ExceptionApplied: decision.ExceptionApplied,
+			MatchedRules: append([]string(nil), decision.MatchedRules...), Reason: decision.Explanation,
 		}
 
 		if err := a.output.Write(record.Event); err != nil {

@@ -30,7 +30,48 @@ static __always_inline void fill_event_identity(struct event_t *event, __u32 eve
     event->ppid = BPF_CORE_READ(task, real_parent, tgid);
     event->mnt_ns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
     event->pid_ns_id = BPF_CORE_READ(task, nsproxy, pid_ns_for_children, ns.inum);
+    event->dirfd = AT_FDCWD;
+    event->destination_dirfd = AT_FDCWD;
     bpf_get_current_comm(event->comm, sizeof(event->comm));
+}
+
+static __always_inline void capture_path_base(__s32 dirfd, __u64 *inode_number, __u64 *device)
+{
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task_btf();
+    struct inode *inode = 0;
+
+    if (dirfd == AT_FDCWD) {
+        struct fs_struct *fs = BPF_CORE_READ(task, fs);
+        struct dentry *dentry = 0;
+
+        if (!fs || bpf_core_read(&dentry, sizeof(dentry), &fs->pwd.dentry) || !dentry)
+            return;
+        inode = BPF_CORE_READ(dentry, d_inode);
+    } else if (dirfd >= 0) {
+        struct fdtable *table = BPF_CORE_READ(task, files, fdt);
+        struct file **fds;
+        struct file *file = 0;
+        unsigned int max_fds;
+
+        if (!table)
+            return;
+        max_fds = BPF_CORE_READ(table, max_fds);
+        if ((__u32)dirfd >= max_fds)
+            return;
+        fds = BPF_CORE_READ(table, fd);
+        if (!fds || bpf_probe_read_kernel(&file, sizeof(file), &fds[dirfd]) || !file)
+            return;
+        struct dentry *dentry = 0;
+
+        if (bpf_core_read(&dentry, sizeof(dentry), &file->f_path.dentry) || !dentry)
+            return;
+        inode = BPF_CORE_READ(dentry, d_inode);
+    }
+
+    if (!inode)
+        return;
+    *inode_number = BPF_CORE_READ(inode, i_ino);
+    *device = BPF_CORE_READ(inode, i_sb, s_dev);
 }
 
 static __always_inline int stash_event(struct event_t *event)

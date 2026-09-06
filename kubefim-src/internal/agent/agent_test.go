@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -68,6 +69,7 @@ func (o *recordingObserver) ObserveOutputError()             { o.outputErrors++ 
 func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	want := event.Event{PID: 42, UID: 1000, Comm: "touch", Path: "/tmp/example", Operation: event.OperationCreate}
+	want.Detection = event.Detection{Action: "audit", Class: "mutation", Reason: "default policy"}
 	source := newFakeCollector(
 		collector.Record{LostSamples: 3},
 		collector.Record{Event: want},
@@ -85,7 +87,7 @@ func TestRunWritesEventAndStopsOnCancellation(t *testing.T) {
 	if err := application.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("output event is %+v, want %+v", got, want)
 	}
 	if !strings.Contains(logs.String(), "lost 3 samples") {
@@ -101,6 +103,7 @@ func TestRunDoesNotWriteSuppressedEvent(t *testing.T) {
 	suppressedEvent := event.Event{PID: 1, Operation: event.OperationOpen, Path: "/usr/lib/a.so"}
 	secondSuppressedEvent := event.Event{PID: 3, Operation: event.OperationOpen, Path: "/usr/lib/b.so"}
 	emittedEvent := event.Event{PID: 2, Operation: event.OperationDelete, Path: "/tmp/a"}
+	emittedEvent.Detection = event.Detection{Action: "audit", Class: "mutation"}
 	source := newFakeCollector(
 		collector.Record{Event: suppressedEvent},
 		collector.Record{Event: secondSuppressedEvent},
@@ -127,7 +130,7 @@ func TestRunDoesNotWriteSuppressedEvent(t *testing.T) {
 	if err := application.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if len(written) != 1 || written[0] != emittedEvent {
+	if len(written) != 1 || !reflect.DeepEqual(written[0], emittedEvent) {
 		t.Fatalf("written events are %+v", written)
 	}
 	if !strings.Contains(logs.String(), "emitted=1 suppressed=2 would_suppress=2") {

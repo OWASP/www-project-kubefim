@@ -15,3 +15,12 @@ type Enricher interface {
 type None struct{}
 
 func (None) Enrich(_ context.Context, value event.Event) event.Event { return value }
+
+type Chain []Enricher
+
+func (c Chain) Enrich(ctx context.Context, value event.Event) event.Event {
+	for _, enricher := range c {
+		value = enricher.Enrich(ctx, value)
+	}
+	return value
+}

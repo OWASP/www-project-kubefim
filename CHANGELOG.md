@@ -4,6 +4,27 @@ Notable changes to OWASP KubeFIM are recorded here. The project uses semantic
 versioning for published container images and marks evaluation builds as
 pre-releases.
 
+## [v0.1.0-alpha.4] - 2026-09-07
+
+### Added
+
+- Verified resolution of relative syscall paths using the process working
+  directory or directory file descriptor captured when the syscall started.
+- Versioned path-resolution fields in JSON output, including explicit failure
+  states that preserve the original syscall argument.
+- A safe Kubernetes supply-chain incident scenario covering credential access,
+  payload staging, process execution, and persistence attempts.
+- A Loki-backed Grafana security dashboard for investigating policy alerts by
+  workload, namespace, operation, and rule.
+
+### Changed
+
+- Policy decisions are included in the same JSON event sent to log backends.
+- Unresolved mutation paths remain visible and cannot be removed by exclusion
+  rules.
+- Official agent and node-initializer images are published from the OWASP
+  Docker Hub repository.
+
 ## [v0.1.0-alpha.3] - 2026-08-31
 
 ### Added
@@ -38,5 +59,6 @@ pre-releases.
 - Published Linux AMD64 and ARM64 agent and initializer images with SBOM and
   provenance attestations.
 
+[v0.1.0-alpha.4]: https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.4
 [v0.1.0-alpha.3]: https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.3
 [v0.1.0-alpha.2]: https://github.com/OWASP/www-project-kubefim/tree/v0.1.0-alpha.2

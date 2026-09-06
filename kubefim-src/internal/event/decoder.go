@@ -10,25 +10,31 @@ import (
 // rawEvent must remain byte-for-byte compatible with struct event_t in
 // bpf/src/common.h.
 type rawEvent struct {
-	TimestampNS     uint64
-	CgroupID        uint64
-	ReturnValue     int64
-	SchemaVersion   uint32
-	EventType       uint32
-	PID             uint32
-	TGID            uint32
-	PPID            uint32
-	UID             uint32
-	GID             uint32
-	MountNamespace  uint32
-	PIDNamespace    uint32
-	Comm            [16]byte
-	Path            [256]byte
-	DestinationPath [256]byte
-	Reserved        uint32
+	TimestampNS           uint64
+	CgroupID              uint64
+	ReturnValue           int64
+	BaseInode             uint64
+	BaseDevice            uint64
+	DestinationBaseInode  uint64
+	DestinationBaseDevice uint64
+	SchemaVersion         uint32
+	EventType             uint32
+	PID                   uint32
+	TGID                  uint32
+	PPID                  uint32
+	UID                   uint32
+	GID                   uint32
+	MountNamespace        uint32
+	PIDNamespace          uint32
+	Comm                  [16]byte
+	Path                  [256]byte
+	DestinationPath       [256]byte
+	DirFD                 int32
+	DestinationDirFD      int32
+	Reserved              uint32
 }
 
-const RawSize = 592
+const RawSize = 632
 
 // Decode converts the fixed-size little-endian kernel payload into an Event.
 func Decode(data []byte) (Event, error) {
@@ -46,21 +52,27 @@ func Decode(data []byte) (Event, error) {
 	}
 
 	return Event{
-		SchemaVersion:   raw.SchemaVersion,
-		TimestampNS:     raw.TimestampNS,
-		CgroupID:        raw.CgroupID,
-		ReturnValue:     raw.ReturnValue,
-		PID:             raw.PID,
-		TGID:            raw.TGID,
-		PPID:            raw.PPID,
-		UID:             raw.UID,
-		GID:             raw.GID,
-		MountNamespace:  raw.MountNamespace,
-		PIDNamespace:    raw.PIDNamespace,
-		Comm:            trimCString(raw.Comm[:]),
-		Path:            trimCString(raw.Path[:]),
-		DestinationPath: trimCString(raw.DestinationPath[:]),
-		Operation:       Operation(raw.EventType),
+		SchemaVersion:         raw.SchemaVersion,
+		TimestampNS:           raw.TimestampNS,
+		CgroupID:              raw.CgroupID,
+		ReturnValue:           raw.ReturnValue,
+		BaseInode:             raw.BaseInode,
+		BaseDevice:            raw.BaseDevice,
+		DestinationBaseInode:  raw.DestinationBaseInode,
+		DestinationBaseDevice: raw.DestinationBaseDevice,
+		PID:                   raw.PID,
+		TGID:                  raw.TGID,
+		PPID:                  raw.PPID,
+		UID:                   raw.UID,
+		GID:                   raw.GID,
+		MountNamespace:        raw.MountNamespace,
+		PIDNamespace:          raw.PIDNamespace,
+		Comm:                  trimCString(raw.Comm[:]),
+		Path:                  trimCString(raw.Path[:]),
+		DestinationPath:       trimCString(raw.DestinationPath[:]),
+		DirFD:                 raw.DirFD,
+		DestinationDirFD:      raw.DestinationDirFD,
+		Operation:             Operation(raw.EventType),
 	}, nil
 }
 

@@ -65,6 +65,12 @@ func (e *Evaluator) Decide(value event.Event) Decision {
 	}
 
 	decision := Decision{Action: action, Class: class, Explanation: "default policy"}
+	unresolvedMutation := class == ClassMutation && value.HasUnresolvedPath()
+	if unresolvedMutation {
+		decision.Action = ActionAlert
+		decision.MatchedRules = append(decision.MatchedRules, "builtin/unresolved-path")
+		decision.Explanation = "mutation path could not be resolved"
+	}
 	decision.Protected = e.matchesProtectedPath(value)
 	if decision.Protected {
 		decision.Action = ActionAlert
@@ -82,7 +88,7 @@ func (e *Evaluator) Decide(value event.Event) Decision {
 		}
 	}
 
-	if decision.Protected {
+	if decision.Protected || unresolvedMutation {
 		return decision
 	}
 	for _, candidate := range e.exclusions {
@@ -117,8 +123,9 @@ func (e *Evaluator) Decide(value event.Event) Decision {
 func (e *Evaluator) Mode() string { return e.mode }
 
 func (e *Evaluator) matchesProtectedPath(value event.Event) bool {
+	path, destination := value.PolicyPath(), value.PolicyDestinationPath()
 	for _, candidate := range e.protectedPaths {
-		if candidate.matches(value.Path) || candidate.matches(value.DestinationPath) {
+		if candidate.matches(path) || candidate.matches(destination) {
 			return true
 		}
 	}
@@ -188,9 +195,10 @@ func (m matcher) matches(value event.Event) bool {
 		}
 	}
 	if len(m.paths) > 0 {
+		path, destination := value.PolicyPath(), value.PolicyDestinationPath()
 		matched := false
 		for _, candidate := range m.paths {
-			if candidate.matches(value.Path) || candidate.matches(value.DestinationPath) {
+			if candidate.matches(path) || candidate.matches(destination) {
 				matched = true
 				break
 			}
